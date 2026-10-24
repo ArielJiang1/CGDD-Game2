@@ -64,9 +64,9 @@ namespace PhoneGame
             phone.phoneClock = "23:41";
             phone.appUnlocked[PhoneController.AppPhotos] = true;
             phone.appUnlocked[PhoneController.AppMessages] = true;
-            phone.lockNotification = "No new messages.";
-            phone.AddHistory("Triangle", "the stairs are open tonight. you did good at lunch.", false);
-            phone.AddHistory("Hums When Scared", "thank you. I mean it.", false);
+            phone.lockNotification = L("No new messages.", "没有新信息。");
+            phone.AddHistory("Triangle", L("the stairs are open tonight. you did good at lunch.", "今晚楼梯开着。午饭时你干得不错。"), false);
+            phone.AddHistory("Hums When Scared", L("thank you. I mean it.", "谢谢你。真心的。"), false);
             phone.onMessageArrived = () => { if (!phone.IsExposed) PhoneBuzz(); };
             ambient.droneVolume = 0.11f;
             ambient.ventVolume = 0.05f;
@@ -92,7 +92,7 @@ namespace PhoneGame
 
         protected override string StrikeSuffix(int n, bool pa)
         {
-            return n == 1 ? "  That's once. Three times, and it's mine." : "  Twice. Next time, it's mine.";
+            return n == 1 ? L("  That's once. Three times, and it's mine.", "  这是第一次。到第三次，它就归我了。") : L("  Twice. Next time, it's mine.", "  第二次了。下次，它就归我了。");
         }
 
         // ------------------------------------------------------------------ story
@@ -102,35 +102,35 @@ namespace PhoneGame
             yield return ChapterCard("CHAPTER 3", "LIGHTS OUT", "MONDAY  -  23:40");
             rig.BackToSeat();
             yield return SneakBack();
-            Authority("Room three-oh-four. Three. Zero. Four.", 5f);
-            Authority("Lights out was at twenty-one hundred. Bed check every fifteen minutes.", 6.5f);
-            Authority("Sleep.", 2.5f);
+            Authority(L("Room three-oh-four. Three. Zero. Four.", "三零四寝室。三。零。四。"), 5f);
+            Authority(L("Lights out was at twenty-one hundred. Bed check every fifteen minutes.", "二十一点整已经熄灯。每十五分钟查一次房。"), 6.5f);
+            Authority(L("Sleep.", "睡觉。"), 2.5f);
             yield return WaitIdle();
             if (warden != null) warden.RunRoute(new[] { corridorNorth }, new[] { 6f }, new[] { float.NaN }, null);
-            Thought("Dark. I can hear his keys down the hall.", 5f);
-            Thought(Rule("Listen for his footsteps.") + " When he comes in,\n" + Rule("HOLD [SPACE]") + " to lie down and pretend to sleep.", 9f);
-            Thought("In the dark, the phone is the brightest thing in the room.\n" + Rule("Only when he's gone."), 8f);
+            Thought(L("Dark. I can hear his keys down the hall.", "一片漆黑。能听见他的钥匙声在走廊那头。"), 5f);
+            Thought(Rule(L("Listen for his footsteps.", "注意听他的脚步声。")) + L(" When he comes in,\n", "他进来时，\n") + Rule(L("HOLD [SPACE]", "按住 [空格]")) + L(" to lie down and pretend to sleep.", "躺下装睡。"), 9f);
+            Thought(L("In the dark, the phone is the brightest thing in the room.\n", "黑暗里，手机是房间里最亮的东西。\n") + Rule(L("Only when he's gone.", "只能等他走了再用。")), 8f);
             yield return WaitIdle();
             yield return new WaitForSeconds(4f);
 
             // the first bed check is scripted, so everyone learns to lie down
-            if (!toldComing) { toldComing = true; Thought("Footsteps. He's coming back. " + Rule("[SPACE]"), 4f, true); }
+            if (!toldComing) { toldComing = true; Thought(L("Footsteps. He's coming back. ", "脚步声。他回来了。") + Rule(L("[SPACE]", "[空格]")), 4f, true); }
             yield return RoomCheck();
             firstCheckDone = true;
             wardenLoop = StartCoroutine(WardenLoop());
 
             yield return new WaitForSeconds(3f);
             NeverBlinksTypes();
-            phone.Receive("Never Blinks", "are you awake");
+            phone.Receive("Never Blinks", L("are you awake", "你醒着吗"));
             yield return new WaitForSeconds(2.5f);
-            phone.Receive("Never Blinks", "it's me. across from you. i can't sleep. i count his footsteps.");
-            Thought("A message. Across the room - Never Blinks.\n" + Rule("Only when he's gone."), 6f);
+            phone.Receive("Never Blinks", L("it's me. across from you. i can't sleep. i count his footsteps.", "是我，在你对面。我睡不着。我在数他的脚步声。"));
+            Thought(L("A message. Across the room - Never Blinks.\n", "一条信息。房间对面——从不眨眼。\n") + Rule(L("Only when he's gone.", "只能等他走了再用。")), 6f);
             while (phone.UnreadCount > 0 && !ended) yield return null;
             phone.StartTask(new PhoneTask
             {
                 header = "Reply",
                 toLabel = "To: Never Blinks",
-                options = new[] { "I'm here.", "Go to sleep." },
+                options = new[] { L("I'm here.", "我在。"), L("Go to sleep.", "快睡吧。") },
                 onDone = i => { replied = true; StartCoroutine(AfterReply(i)); },
                 typeSeconds = 2.5f,
             });
@@ -139,16 +139,16 @@ namespace PhoneGame
             while (!phone.FirstContactSeen && !ended) yield return null;
             if (ended) yield break;
             firstContactTold = true;
-            Thought("Seat 31. Nineteen seventy-nine.\nSomeone had this phone almost " + Rule("fifty years ago") + ".", 7f);
+            Thought(L("Seat 31. Nineteen seventy-nine.\nSomeone had this phone almost ", "31 号座位。一九七九年。\n将近") + Rule(L("fifty years ago", "五十年前")) + L(".", "，就有人拿着这部手机了。"), 7f);
             yield return new WaitForSeconds(3f);
             NeverBlinksTypes();
-            phone.Receive("Never Blinks", "see it? the oldest one. nobody knows who.");
+            phone.Receive("Never Blinks", L("see it? the oldest one. nobody knows who.", "看到了吗？最老的那个。没人知道是谁。"));
             yield return new WaitForSeconds(7f);
-            phone.Receive("Triangle", "one more thing tonight.");
-            phone.Receive("Triangle", "the dorm across the yard watches our window at midnight. flash your screen at it three times.");
+            phone.Receive("Triangle", L("one more thing tonight.", "今晚还有一件事。"));
+            phone.Receive("Triangle", L("the dorm across the yard watches our window at midnight. flash your screen at it three times.", "院子对面那栋宿舍，半夜会盯着我们的窗户。用屏幕朝它闪三下。"));
             while (phone.UnreadCount > 0 && !ended) yield return null;
             signalAsked = true;
-            Thought(Rule("Phone up, face the window, [LEFT MOUSE] to flash.") + "\nThree times. Only when he's far away.", 9f);
+            Thought(Rule(L("Phone up, face the window, [LEFT MOUSE] to flash.", "拿起手机，面向窗户，按[鼠标左键]闪一下。")) + L("\nThree times. Only when he's far away.", "\n闪三次。只在他走远的时候。"), 9f);
         }
 
         /// <summary>Opening: someone tiptoes back from the stairwell, stops at your door, and whispers.</summary>
@@ -158,14 +158,14 @@ namespace PhoneGame
             sneaker.Begin();
             bool done = false;
             sneaker.RunRoute(new[] { doorOutside }, new[] { 0f }, new[] { -90f }, () => done = true);
-            Thought("Footsteps. Light ones - not his.", 3.5f);
+            Thought(L("Footsteps. Light ones - not his.", "脚步声。很轻——不是他的。"), 3.5f);
             float t = 0f;
             while (!done && t < 14f) { t += Time.deltaTime; yield return null; }
             yield return new WaitForSeconds(0.6f);
-            StudentSay("(whispering)", "...psst. Seat thirty-one. It's real - down there. The stairs.", 4.5f);
-            StudentSay("(whispering)", "Everyone was talking. Out loud. Come next time.", 4f);
+            StudentSay("(whispering)", L("...psst. Seat thirty-one. It's real - down there. The stairs.", "……嘘。三十一号。是真的——就在下面。楼梯那里。"), 4.5f);
+            StudentSay("(whispering)", L("Everyone was talking. Out loud. Come next time.", "大家都在说话。大声地说。下次你也来。"), 4f);
             yield return WaitIdle();
-            Thought("The girl who hums. Back from the stairs.\nShe's smiling. " + Rule("People really go down there."), 5.5f);
+            Thought(L("The girl who hums. Back from the stairs.\nShe's smiling. ", "是那个会哼歌的女孩。刚从楼梯那边回来。\n她在笑。") + Rule(L("People really go down there.", "真的有人会去那下面。")), 5.5f);
             done = false;
             sneaker.RunRoute(new[] { corridorNorth }, new[] { 0f }, new[] { float.NaN }, () => done = true);
             t = 0f;
@@ -179,12 +179,12 @@ namespace PhoneGame
         {
             yield return new WaitForSeconds(2f);
             NeverBlinksTypes();
-            phone.Receive("Never Blinks", choice == 0 ? "...thanks. nobody says that here." : "...you sound like him.");
+            phone.Receive("Never Blinks", choice == 0 ? L("...thanks. nobody says that here.", "……谢谢。这里没人会这么说。") : L("...you sound like him.", "……你说话跟他一样。"));
             yield return new WaitForSeconds(2.5f);
-            phone.Receive("Never Blinks", "triangle says: the oldest name in Contacts. its code is this room. he says it every night.");
+            phone.Receive("Never Blinks", L("triangle says: the oldest name in Contacts. its code is this room. he says it every night.", "三角说：看通讯录里最老的名字。密码就是这间寝室。他每晚都会念一遍。"));
             contactsAsked = true;
             while (phone.UnreadCount > 0 && !ended) yield return null;
-            Thought("This room... " + Rule("Three. Zero. Four.") + "\nContacts.", 6f);
+            Thought(L("This room... ", "这间寝室……") + Rule(L("Three. Zero. Four.", "三。零。四。")) + L("\nContacts.", "\n通讯录。"), 6f);
         }
 
         void NeverBlinksTypes()
@@ -210,16 +210,16 @@ namespace PhoneGame
                 SetAcross(false);
                 yield return new WaitForSeconds(0.45f);
             }
-            Thought("Three lights across the yard.\n" + Rule("Someone answered."), 5f, true);
+            Thought(L("Three lights across the yard.\n", "院子对面亮了三下。\n") + Rule(L("Someone answered.", "有人回应了。")), 5f, true);
             yield return new WaitForSeconds(2f);
             NeverBlinksTypes();
-            phone.Receive("Never Blinks", "they saw. goodnight :)");
+            phone.Receive("Never Blinks", L("they saw. goodnight :)", "他们看见了。晚安 :)"));
             yield return new WaitForSeconds(4.5f);
             ended = true;
             phone.allowRaise = false;
             yield return Fade(0f, 1f, 2.5f);
             ambient.Play(AudioSynth.Chime(), 0.4f);
-            caption.text = "06:00\n\nGOOD MORNING, CLEARVIEW. YOU SLEPT WELL.\nTHANK YOU FOR SLEEPING.";
+            caption.text = L("06:00\n\nGOOD MORNING, CLEARVIEW. YOU SLEPT WELL.\nTHANK YOU FOR SLEEPING.", "06:00\n\n早上好，明鉴学院。您睡得很好。\n感谢您的睡眠。");
             yield return new WaitForSeconds(4.5f);
             GameFlow.EndLevel(LessonResult.Win, "signal");
         }
@@ -310,10 +310,10 @@ namespace PhoneGame
         IEnumerator CheckSleeper()
         {
             Vector3 spot = sleeperSpots[Random.Range(0, sleeperSpots.Length)];
-            if (Random.value < 0.5f) StudentSay("SLEEPING STUDENT", mumbles[Random.Range(0, mumbles.Length)], 3.5f);
+            if (Random.value < 0.5f) StudentSay("SLEEPING STUDENT", Loc.T(mumbles[Random.Range(0, mumbles.Length)]), 3.5f);
             yield return Route(new[] { doorOutside, doorInside, new Vector3(4f, 0f, spot.z) }, new[] { 0.8f, 0.2f, 0.2f }, new[] { -90f, float.NaN, float.NaN });
             yield return GoTo(spot, 3.2f, spot.x < 4f ? -90f : 90f);
-            WardenSays(sleeperLines[Random.Range(0, sleeperLines.Length)]);
+            WardenSays(Loc.T(sleeperLines[Random.Range(0, sleeperLines.Length)]));
             yield return Route(new[] { doorInside, doorOutside, Random.value < 0.5f ? corridorSouth : corridorNorth }, new[] { 0.3f, 0.4f, 0f }, new[] { float.NaN, float.NaN, float.NaN });
         }
 
@@ -322,7 +322,7 @@ namespace PhoneGame
         {
             yield return Route(new[] { doorOutside, doorInside }, new[] { 1.0f, 0.4f }, new[] { -90f, float.NaN });
             yield return GoTo(bedsideStand, Random.Range(4f, 6.5f), 90f);
-            WardenSays(Random.value < 0.5f ? "...I know when someone is pretending." : "...", 3.5f);
+            WardenSays(Random.value < 0.5f ? L("...I know when someone is pretending.", "……谁在装睡，我都知道。") : "...", 3.5f);
             yield return Route(new[] { doorInside, doorOutside, corridorSouth }, new[] { 0.3f, 0.3f, 0f }, new[] { float.NaN, float.NaN, float.NaN });
         }
 
@@ -332,7 +332,7 @@ namespace PhoneGame
             yield return GoTo(doorOutside, 0.5f, -90f);
             yield return GoTo(doorInside, Random.Range(6f, 9f), -90f);
             if (wardenSteps != null) wardenSteps.PlayAt(AudioSynth.Keys(), 0.6f);
-            WardenSays(Random.value < 0.5f ? "Sweet dreams, three-oh-four." : "Good. Nobody is awake.", 3.5f);
+            WardenSays(Random.value < 0.5f ? L("Sweet dreams, three-oh-four.", "做个好梦，三零四。") : L("Good. Nobody is awake.", "很好。没有人醒着。"), 3.5f);
             yield return Route(new[] { doorOutside, Random.value < 0.5f ? corridorNorth : corridorSouth }, new[] { 0.3f, 0f }, new[] { float.NaN, float.NaN });
         }
 
@@ -353,7 +353,7 @@ namespace PhoneGame
             for (int i = 0; i < stops.Length && !ended; i++)
             {
                 yield return GoTo(stops[i], i == 3 ? 2.2f : 0.9f, yaws[i]);
-                Authority(n[i], 1.6f, true, 0.1f);
+                Authority(Loc.T(n[i]), 1.6f, true, 0.1f);
             }
             yield return Route(new[] { aisleMiddle, doorInside, doorOutside, corridorSouth }, new[] { 0.2f, 0.2f, 0.3f, 0f }, new[] { float.NaN, float.NaN, float.NaN, float.NaN });
         }
@@ -365,7 +365,7 @@ namespace PhoneGame
             yield return GoTo(doorInside, 0.1f, -90f);
             ambient.Play(AudioSynth.Click(), 0.8f, 0.7f);
             if (roomLight != null) roomLight.intensity = 2.2f;
-            Authority("Lights.", 2f, true);
+            Authority(L("Lights.", "开灯。"), 2f, true);
             float t = 0f;
             while (t < Random.Range(2.5f, 4f) && !ended) { t += Time.deltaTime; yield return null; }
             ambient.Play(AudioSynth.Click(), 0.8f, 0.7f);
@@ -379,7 +379,7 @@ namespace PhoneGame
             int e;
             do { e = Random.Range(0, 6); } while (e == lastEvent);
             lastEvent = e;
-            if (DialogueIdle && e != 3) Authority(enterLines[Random.Range(0, enterLines.Length)], 3f);
+            if (DialogueIdle && e != 3) Authority(Loc.T(enterLines[Random.Range(0, enterLines.Length)]), 3f);
             switch (e)
             {
                 case 0: yield return RoomCheck(); break;
@@ -435,12 +435,12 @@ namespace PhoneGame
 
         void UpdateObjective()
         {
-            if (!firstCheckDone) { SetObjective("Listen for his footsteps.\nWhen he comes in: HOLD SPACE to lie down."); return; }
-            if (!replied) { SetObjective("Reply to Never Blinks (Messages).\nOnly when he's gone. HOLD SPACE when he comes."); return; }
-            if (!phone.IsUnlocked(PhoneController.AppContacts)) { SetObjective("Unlock CONTACTS.\nCode = this room's number (he says it every night)."); return; }
-            if (!phone.FirstContactSeen) { SetObjective("Open Contacts and look at\nthe OLDEST contact."); return; }
-            if (!signalAsked) { SetObjective("Wait for messages.\nLie down (HOLD SPACE) whenever he comes."); return; }
-            if (flashes < 3) { SetObjective("Face the WINDOW, phone up, LEFT MOUSE to flash (" + flashes + "/3).\nOnly when he is far away."); return; }
+            if (!firstCheckDone) { SetObjective(L("Listen for his footsteps.\nWhen he comes in: HOLD SPACE to lie down.", "注意听他的脚步声。\n他进来时：按住空格躺下。")); return; }
+            if (!replied) { SetObjective(L("Reply to Never Blinks (Messages).\nOnly when he's gone. HOLD SPACE when he comes.", "回复\"从不眨眼\"（信息）。\n只能等他走了再用。他来时按住空格。")); return; }
+            if (!phone.IsUnlocked(PhoneController.AppContacts)) { SetObjective(L("Unlock CONTACTS.\nCode = this room's number (he says it every night).", "解锁\"通讯录\"。\n密码 = 这间寝室的门牌号（他每晚都会念）。")); return; }
+            if (!phone.FirstContactSeen) { SetObjective(L("Open Contacts and look at\nthe OLDEST contact.", "打开通讯录，\n看看最老的那个联系人。")); return; }
+            if (!signalAsked) { SetObjective(L("Wait for messages.\nLie down (HOLD SPACE) whenever he comes.", "等待新信息。\n他一来就躺下（按住空格）。")); return; }
+            if (flashes < 3) { SetObjective(L("Face the WINDOW, phone up, LEFT MOUSE to flash (" + flashes + "/3).\nOnly when he is far away.", "面向窗户，拿起手机，按鼠标左键闪光（" + flashes + "/3）。\n只在他走远的时候。")); return; }
             SetObjective("");
         }
 
@@ -473,8 +473,8 @@ namespace PhoneGame
         {
             string p = null;
             if (signalAsked && !answered && flashes < 3 && phone.IsUp && phone.ScreenOn)
-                p = FacingWindow() ? "[Left Mouse]  Flash the screen at the window  (" + flashes + "/3)" : "Face the window";
-            else if (!phone.IsExposed && rig.CurrentMode == PlayerRig.Mode.Seated && !firstCheckDone) p = "HOLD [Space]  Lie down";
+                p = FacingWindow() ? L("[Left Mouse]  Flash the screen at the window  (" + flashes + "/3)", "[鼠标左键]  用屏幕朝窗户闪光（" + flashes + "/3）") : L("Face the window", "面向窗户");
+            else if (!phone.IsExposed && rig.CurrentMode == PlayerRig.Mode.Seated && !firstCheckDone) p = L("HOLD [Space]  Lie down", "按住 [空格]  躺下");
             SetPrompt(p);
         }
 
@@ -496,8 +496,8 @@ namespace PhoneGame
             }
             if (AccumulateDanger(rate))
             {
-                if (lastSeenReason == "light") Strike("...A light. Lights out means lights out.");
-                else Strike("Why are you sitting up? Lie down.");
+                if (lastSeenReason == "light") Strike(L("...A light. Lights out means lights out.", "……有光。熄灯就是熄灯。"));
+                else Strike(L("Why are you sitting up? Lie down.", "你坐着干什么？躺下。"));
             }
         }
 
@@ -510,7 +510,7 @@ namespace PhoneGame
             phone.CancelTask();
             rig.Lock();
             SetLids(0f);
-            Authority("Hand it over.", 4f, true);
+            Authority(L("Hand it over.", "交出来。"), 4f, true);
             if (warden != null)
             {
                 warden.Approach(bedsideStand, rig.transform);
@@ -519,7 +519,7 @@ namespace PhoneGame
                 while (!warden.HasArrived && t < 9f) { t += Time.deltaTime; yield return null; }
             }
             yield return WaitIdle();
-            Authority("Sweet dreams.", 3f);
+            Authority(L("Sweet dreams.", "做个好梦。"), 3f);
             yield return WaitIdle();
             yield return Caught("confiscated");
         }

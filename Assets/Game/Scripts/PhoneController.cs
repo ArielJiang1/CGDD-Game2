@@ -69,15 +69,22 @@ namespace PhoneGame
         public float raiseSeconds = 0.25f;
         public float lowerSeconds = 0.3f;
         public string[] appNames = { "Photos", "Camera", "Contacts", "Messages", "Search" };
-        public string[] appCodes = { "2100", "", "0304", "1240", "" };
+        public string[] appCodes = { "2100", "1045", "0304", "1240", "0467" };
         public string[] appHints =
         {
             "Hint: lights out (24-hour clock)",
-            "Hint: ???",
+            "Hint: when your class is photographed",
             "Hint: where you sleep (room number)",
             "Hint: when we eat (24-hour clock)",
-            "Hint: ???",
+            "Hint: the stamp in the oldest book (month + year)",
         };
+
+        /// <summary>
+        /// One app per chapter. The home screen lists them in the order they are unlocked, and an app's code hint
+        /// stays "???" until you reach the chapter where it can be opened.
+        /// </summary>
+        public static readonly int[] HomeOrder = { AppPhotos, AppMessages, AppContacts, AppCamera, AppSearch };
+        static readonly string[] UnlockScene = { "Level01_Lesson", "Level04_PictureDay", "Level03_LightsOut", "Level02_Lunch", "Level05_Archive" };
         public float[] appLoadSeconds = { 7f, 5f, 5f, 5f, 5f };
         public bool[] appUnlocked = new bool[5];
 
@@ -135,6 +142,33 @@ namespace PhoneGame
         public PhoneTask Task { get { return task; } }
         public int OpenApp { get { return openApp; } }
         public bool IsUnlocked(int app) { return app >= 0 && app < appUnlocked.Length && appUnlocked[app]; }
+
+        /// <summary>Has the player reached the chapter where this app's code can be worked out?</summary>
+        public bool HintAvailable(int app)
+        {
+            if (app < 0 || app >= UnlockScene.Length) return false;
+            int need = GameFlow.LevelIndex(UnlockScene[app]);
+            int now = GameFlow.LevelIndex(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            return need >= 0 && now >= need;
+        }
+
+        string HintFor(int app)
+        {
+            if (!HintAvailable(app) || app >= appHints.Length) return Loc.L("Hint: ???", "提示：???");
+            return Loc.T(appHints[app]);
+        }
+
+        public static string AppName(int app)
+        {
+            switch (app)
+            {
+                case AppPhotos: return Loc.L("Photos", "相册");
+                case AppCamera: return Loc.L("Camera", "相机");
+                case AppContacts: return Loc.L("Contacts", "通讯录");
+                case AppMessages: return Loc.L("Messages", "信息");
+                default: return Loc.L("Search", "搜索");
+            }
+        }
         public System.Action onMessageArrived;
 
         public int UnreadCount
@@ -213,7 +247,7 @@ namespace PhoneGame
         void SharpenText()
         {
             if (phoneCanvas == null) return;
-            Font sans = UIFactory.DefaultFont;
+            Font sans = Loc.Chinese ? UIFactory.CjkFont : UIFactory.DefaultFont;
             foreach (Text t in phoneCanvas.GetComponentsInChildren<Text>(true))
             {
                 if (sans != null) t.font = sans;
@@ -227,7 +261,7 @@ namespace PhoneGame
             msgs.Add(new PhoneMsg { from = from, text = text, mine = false, shown = 0f });
             if (notifFrom != null && hasPhone)
             {
-                notifFrom.text = from.ToUpper();
+                notifFrom.text = Loc.T(from).ToUpper();
                 notifText.text = text.Length > 44 ? text.Substring(0, 42) + "..." : text;
                 notifT = 4.5f;
             }
@@ -285,8 +319,8 @@ namespace PhoneGame
             }
 
             // Leaving the phone during a loading screen resets it.
-            if (!held && Screen == PhoneScreen.Booting) { Screen = PhoneScreen.Lock; entry = ""; Notice("The phone locked itself again."); }
-            if (!held && Screen == PhoneScreen.AppLoading) { Screen = PhoneScreen.AppLock; entry = ""; Notice(appNames[openApp] + " locked again."); }
+            if (!held && Screen == PhoneScreen.Booting) { Screen = PhoneScreen.Lock; entry = ""; Notice(Loc.L("The phone locked itself again.", "手机又锁上了。")); }
+            if (!held && Screen == PhoneScreen.AppLoading) { Screen = PhoneScreen.AppLock; entry = ""; Notice(Loc.L(AppName(openApp) + " locked again.", AppName(openApp) + " 又锁上了。")); }
 
             if (notif != null)
             {
@@ -297,7 +331,7 @@ namespace PhoneGame
                 Vector2 np = notif.anchoredPosition;
                 np.y = Mathf.Lerp(np.y, target, 1f - Mathf.Exp(-Time.deltaTime * 10f));
                 notif.anchoredPosition = np;
-                notifCount.text = unread > 1 ? unread + " new messages" : (unread == 1 ? "1 new message" : "");
+                notifCount.text = unread > 1 ? Loc.L(unread + " new messages", unread + " 条新信息") : (unread == 1 ? Loc.L("1 new message", "1 条新信息") : "");
                 // a quick nudge when it arrives
                 notif.localRotation = Quaternion.Euler(0f, 0f, notifT > 4.1f ? Mathf.Sin(Time.time * 60f) * 1.5f : 0f);
             }
@@ -327,11 +361,11 @@ namespace PhoneGame
                     break;
 
                 case PhoneScreen.Home:
-                    if (GameInput.LeftKeyDown()) selectedApp = (selectedApp + appNames.Length - 1) % appNames.Length;
-                    if (GameInput.RightKeyDown()) selectedApp = (selectedApp + 1) % appNames.Length;
+                    if (GameInput.LeftKeyDown()) selectedApp = (selectedApp + HomeOrder.Length - 1) % HomeOrder.Length;
+                    if (GameInput.RightKeyDown()) selectedApp = (selectedApp + 1) % HomeOrder.Length;
                     if (GameInput.LeftDown() || GameInput.EnterDown())
                     {
-                        openApp = selectedApp;
+                        openApp = HomeOrder[selectedApp];   // selectedApp = position on the home screen
                         entry = "";
                         if (IsUnlocked(openApp)) OpenUnlockedApp();
                         else Screen = PhoneScreen.AppLock;
@@ -382,7 +416,7 @@ namespace PhoneGame
             if (openApp == AppPhotos) { Screen = PhoneScreen.Photos; photoIndex = 0; }
             else if (openApp == AppContacts) { Screen = PhoneScreen.Contacts; contactIndex = 0; }
             else if (openApp == AppMessages) Screen = PhoneScreen.Messages;
-            else { Screen = PhoneScreen.Home; Notice("This app doesn't open. Yet."); }
+            else { Screen = PhoneScreen.Home; Notice(Loc.L("This app doesn't open. Yet.", "这个 App 打不开。还打不开。")); }
         }
 
         void TickMessages(float dt)
@@ -406,7 +440,7 @@ namespace PhoneGame
                 }
                 if (GameInput.LeftDown() && n > 0)
                 {
-                    if (task.correct >= 0 && choice != task.correct) { Notice(task.wrongText); return; }
+                    if (task.correct >= 0 && choice != task.correct) { Notice(Loc.T(task.wrongText)); return; }
                     if (task.check != null)
                     {
                         string err = task.check(choice);
@@ -426,7 +460,7 @@ namespace PhoneGame
                 msgs.Add(new PhoneMsg { from = "me", text = sent, mine = true, shown = sent.Length });
                 task = null;
                 typing = false;
-                Notice("Delivered.");
+                Notice(Loc.L("Delivered.", "已送达。"));
                 if (done.onDone != null) done.onDone(c);
             }
         }
@@ -435,14 +469,14 @@ namespace PhoneGame
         {
             if (Screen == PhoneScreen.Lock)
             {
-                if (entry == phoneCode) { Screen = PhoneScreen.Booting; loadT = 0f; Notice("Don't put it down."); }
-                else Notice("Wrong passcode.");
+                if (entry == phoneCode) { Screen = PhoneScreen.Booting; loadT = 0f; Notice(Loc.L("Don't put it down.", "别放下手机。")); }
+                else Notice(Loc.L("Wrong passcode.", "密码错误。"));
             }
             else
             {
                 string code = (openApp >= 0 && openApp < appCodes.Length) ? appCodes[openApp] : "";
-                if (!string.IsNullOrEmpty(code) && entry == code) { Screen = PhoneScreen.AppLoading; loadT = 0f; Notice("Don't put it down."); }
-                else Notice("Wrong passcode.");
+                if (!string.IsNullOrEmpty(code) && entry == code) { Screen = PhoneScreen.AppLoading; loadT = 0f; Notice(Loc.L("Don't put it down.", "别放下手机。")); }
+                else Notice(Loc.L("Wrong passcode.", "密码错误。"));
             }
             entry = "";
         }
@@ -464,23 +498,23 @@ namespace PhoneGame
             string hint = "";
             if (isLock)
             {
-                lockTitle.text = Screen == PhoneScreen.Lock ? "Enter passcode" : appNames[openApp] + " is locked\nEnter passcode";
+                lockTitle.text = Screen == PhoneScreen.Lock ? Loc.L("Enter passcode", "输入密码") : Loc.L(AppName(openApp) + " is locked\nEnter passcode", AppName(openApp) + " 已上锁\n输入密码");
                 string dots = "";
                 for (int i = 0; i < 4; i++) dots += (i < entry.Length ? "*" : "_") + (i < 3 ? "  " : "");
                 lockDots.text = dots;
-                lockHint.text = Screen == PhoneScreen.Lock ? phoneHint : (openApp < appHints.Length ? appHints[openApp] : "Hint: ???");
+                lockHint.text = Screen == PhoneScreen.Lock ? Loc.T(phoneHint) : HintFor(openApp);
                 lockNoteRoot.SetActive(Screen == PhoneScreen.Lock);
                 lockNote.text = LockNotificationText();
-                hint = Screen == PhoneScreen.Lock ? "Number keys: type    Backspace: delete" : "Number keys: type    Q: back";
+                hint = Screen == PhoneScreen.Lock ? Loc.L("Number keys: type    Backspace: delete", "数字键：输入    Backspace：删除") : Loc.L("Number keys: type    Q: back", "数字键：输入    Q：返回");
             }
             else if (isLoad)
             {
                 float total = Screen == PhoneScreen.Booting ? bootSeconds : appLoadSeconds[openApp];
                 float p = Mathf.Clamp01(loadT / Mathf.Max(0.1f, total));
-                loadTitle.text = Screen == PhoneScreen.Booting ? "STARTING UP" : "OPENING " + appNames[openApp].ToUpper();
+                loadTitle.text = Screen == PhoneScreen.Booting ? Loc.L("STARTING UP", "正在开机") : Loc.L("OPENING " + AppName(openApp).ToUpper(), "正在打开 " + AppName(openApp));
                 loadPercent.text = Mathf.FloorToInt(p * 100f) + "%";
                 loadFill.anchorMax = new Vector2(p, 1f);
-                hint = "Keep holding Right Mouse.";
+                hint = Loc.L("Keep holding Right Mouse.", "按住鼠标右键别松开。");
             }
             else if (Screen == PhoneScreen.Home)
             {
@@ -488,32 +522,33 @@ namespace PhoneGame
                 int unread = UnreadCount;
                 for (int i = 0; i < appTiles.Length; i++)
                 {
+                    int app = HomeOrder[i];
                     bool on = i == selectedApp;
                     appTiles[i].color = on ? new Color(0.20f, 0.20f, 0.22f) : new Color(0f, 0f, 0f, 0.12f);
                     appLabels[i].color = on ? new Color(0.98f, 0.9f, 0.7f) : Ink;
-                    string extra = !IsUnlocked(i) ? "\n(locked)" : (i == AppMessages && unread > 0 ? "\n(" + unread + " new)" : "");
-                    appLabels[i].text = appNames[i] + extra;
+                    string extra = !IsUnlocked(app) ? Loc.L("\n(locked)", "\n（已上锁）") : (app == AppMessages && unread > 0 ? Loc.L("\n(" + unread + " new)", "\n（" + unread + " 条新）") : "");
+                    appLabels[i].text = AppName(app) + extra;
                 }
-                hint = "A / D: choose app    Left Mouse: open";
+                hint = Loc.L("A / D: choose app    Left Mouse: open", "A / D：选择    鼠标左键：打开");
             }
             else if (Screen == PhoneScreen.Photos)
             {
                 for (int i = 0; i < photos.Length; i++) photos[i].SetActive(i == photoIndex);
-                photoCaption.text = photoIndex < photoCaptions.Length ? photoCaptions[photoIndex] : "";
+                photoCaption.text = photoIndex < photoCaptions.Length ? Loc.T(photoCaptions[photoIndex]) : "";
                 photoCounter.text = (photoIndex + 1) + " / " + PhotoCount;
-                hint = "A / D: browse    Q: back";
+                hint = Loc.L("A / D: browse    Q: back", "A / D：翻看    Q：返回");
             }
             else if (Screen == PhoneScreen.Contacts)
             {
                 if (contacts.Count > 0)
                 {
                     PhoneContact c = contacts[Mathf.Clamp(contactIndex, 0, contacts.Count - 1)];
-                    contactName.text = c.name;
-                    contactYear.text = "saved in " + c.year;
-                    contactNote.text = c.note;
+                    contactName.text = Loc.T(c.name);
+                    contactYear.text = Loc.L("saved in " + c.year, "存于 " + c.year + " 年");
+                    contactNote.text = Loc.T(c.note);
                     contactCounter.text = (contactIndex + 1) + " / " + contacts.Count;
                 }
-                hint = "A / D: browse    Q: back";
+                hint = Loc.L("A / D: browse    Q: back", "A / D：翻看    Q：返回");
             }
             else if (Screen == PhoneScreen.Messages)
             {
@@ -530,15 +565,15 @@ namespace PhoneGame
                 if (m.mine || m.shown >= m.text.Length) continue;
                 int n = UnreadCount;
                 string preview = m.text.Length > 46 ? m.text.Substring(0, 46) + "..." : m.text;
-                return n + (n == 1 ? " new message\n" : " new messages\n") + m.from + ": " + preview;
+                return Loc.L(n + (n == 1 ? " new message\n" : " new messages\n"), n + " 条新信息\n") + Loc.T(m.from) + ": " + preview;
             }
-            return lockNotification;
+            return Loc.T(lockNotification);
         }
 
         string RefreshMessages()
         {
             int unread = UnreadCount;
-            msgHeader.text = "Messages" + (unread > 0 ? "   (" + unread + " new)" : "");
+            msgHeader.text = AppName(AppMessages) + (unread > 0 ? Loc.L("   (" + unread + " new)", "   （" + unread + " 条新）") : "");
 
             // show messages up to the one being read
             int last = msgs.Count - 1;
@@ -556,7 +591,7 @@ namespace PhoneGame
                 PhoneMsg m = msgs[i];
                 int shown = Mathf.FloorToInt(m.shown);
                 bool reading = !m.mine && shown < m.text.Length;
-                bubbleFrom[s].text = m.mine ? "me" : m.from;
+                bubbleFrom[s].text = m.mine ? Loc.L("me", "我") : Loc.T(m.from);
                 bubbleText[s].text = (reading ? m.text.Substring(0, shown) + "_" : m.text);
                 bubbleBg[s].color = m.mine ? new Color(0.22f, 0.24f, 0.26f, 0.95f) : new Color(0f, 0f, 0f, 0.09f);
                 bubbleText[s].color = m.mine ? new Color(0.95f, 0.92f, 0.82f) : Ink;
@@ -567,23 +602,23 @@ namespace PhoneGame
 
             bool showTask = task != null && unread == 0;
             taskRoot.SetActive(showTask);
-            if (unread > 0) return "reading...  (keep the phone up)";
-            if (!showTask) return "Q: back";
+            if (unread > 0) return Loc.L("reading...  (keep the phone up)", "正在读……（别放下手机）");
+            if (!showTask) return Loc.L("Q: back", "Q：返回");
             typeBarRoot.SetActive(typing);
             if (!typing)
             {
-                taskHeader.text = task.header;
-                string opt = task.options != null && task.options.Length > 0 ? task.options[Mathf.Clamp(choice, 0, task.options.Length - 1)] : "";
+                taskHeader.text = Loc.T(task.header);
+                string opt = task.options != null && task.options.Length > 0 ? Loc.T(task.options[Mathf.Clamp(choice, 0, task.options.Length - 1)]) : "";
                 taskBody.text = "<  " + opt + "  >";
-                taskHelp.text = "A / D: choose    Left Mouse: select";
+                taskHelp.text = Loc.L("A / D: choose    Left Mouse: select", "A / D：选择    鼠标左键：确定");
                 return "";
             }
             string text = task.forward ? task.sendText : task.options[choice];
-            taskHeader.text = task.forward ? "To: " + task.options[choice] : (string.IsNullOrEmpty(task.toLabel) ? "Reply" : task.toLabel);
+            taskHeader.text = task.forward ? Loc.L("To: ", "发给：") + Loc.T(task.options[choice]) : (string.IsNullOrEmpty(task.toLabel) ? Loc.L("Reply", "回复") : Loc.T(task.toLabel));
             int n = Mathf.FloorToInt(typeProgress * text.Length);
             taskBody.text = text.Substring(0, Mathf.Clamp(n, 0, text.Length)) + "_";
             typeFill.anchorMax = new Vector2(typeProgress, 1f);
-            taskHelp.text = "HOLD Left Mouse: type & send";
+            taskHelp.text = Loc.L("HOLD Left Mouse: type & send", "按住鼠标左键：输入并发送");
             return "";
         }
 
@@ -597,14 +632,14 @@ namespace PhoneGame
             RectTransform icon = UIFactory.TopLeft("Icon", notif, 16f, 18f, 46f, 46f);
             UIFactory.AddImage(icon, new Color(0.95f, 0.86f, 0.62f));
             UIFactory.AddText(UIFactory.Stretch("Glyph", icon), "...", 26, new Color(0.1f, 0.1f, 0.12f), TextAnchor.MiddleCenter).fontStyle = FontStyle.Bold;
-            Text app = UIFactory.AddText(UIFactory.TopLeft("App", notif, 76f, 10f, 300f, 22f), "MESSAGES  -  now", 15, new Color(0.65f, 0.65f, 0.68f), TextAnchor.UpperLeft);
+            Text app = UIFactory.AddText(UIFactory.TopLeft("App", notif, 76f, 10f, 300f, 22f), Loc.L("MESSAGES  -  now", "信息  -  刚刚"), 15, new Color(0.65f, 0.65f, 0.68f), TextAnchor.UpperLeft);
             app.fontStyle = FontStyle.Bold;
             notifCount = UIFactory.AddText(UIFactory.TopLeft("Count", notif, 230f, 10f, 234f, 22f), "", 15, new Color(0.95f, 0.86f, 0.62f), TextAnchor.UpperRight);
             notifFrom = UIFactory.AddText(UIFactory.TopLeft("From", notif, 76f, 32f, 392f, 24f), "", 18, Color.white, TextAnchor.UpperLeft);
             notifFrom.fontStyle = FontStyle.Bold;
             notifText = UIFactory.AddText(UIFactory.TopLeft("Text", notif, 76f, 56f, 392f, 24f), "", 17, new Color(0.85f, 0.85f, 0.85f), TextAnchor.UpperLeft);
             notifText.horizontalOverflow = HorizontalWrapMode.Overflow;
-            UIFactory.AddText(UIFactory.TopLeft("Hint", notif, 76f, 80f, 392f, 20f), "HOLD RIGHT MOUSE to read", 14, new Color(0.95f, 0.86f, 0.62f, 0.8f), TextAnchor.UpperLeft);
+            UIFactory.AddText(UIFactory.TopLeft("Hint", notif, 76f, 80f, 392f, 20f), Loc.L("HOLD RIGHT MOUSE to read", "按住鼠标右键查看"), 14, new Color(0.95f, 0.86f, 0.62f, 0.8f), TextAnchor.UpperLeft);
         }
 
         void BuildUI()
@@ -664,14 +699,16 @@ namespace PhoneGame
             homeClock = UIFactory.AddText(UIFactory.TopLeft("Clock", homeRoot.transform, 18f, 40f, 368f, 100f), "", 72, Ink, TextAnchor.MiddleCenter);
             appTiles = new Image[appNames.Length];
             appLabels = new Text[appNames.Length];
-            for (int i = 0; i < appNames.Length; i++)
+            for (int i = 0; i < HomeOrder.Length; i++)
             {
+                int app = HomeOrder[i];
                 int col = i % 3, row = i / 3;
-                RectTransform t = UIFactory.TopLeft("App_" + appNames[i], homeRoot.transform, 22f + col * 122f, 200f + row * 150f, 110f, 130f);
+                RectTransform t = UIFactory.TopLeft("App_" + appNames[app], homeRoot.transform, 22f + col * 122f, 200f + row * 150f, 110f, 130f);
                 appTiles[i] = UIFactory.AddImage(t, Color.clear);
                 RectTransform icon = UIFactory.TopLeft("Icon", t, 25f, 12f, 60f, 60f);
-                UIFactory.AddImage(icon, Color.HSVToRGB(i * 0.17f, 0.35f, 0.65f));
-                appLabels[i] = UIFactory.AddText(UIFactory.TopLeft("Label", t, 0f, 76f, 110f, 54f), appNames[i], 16, Ink, TextAnchor.UpperCenter);
+                UIFactory.AddImage(icon, Color.HSVToRGB(app * 0.17f, 0.35f, 0.65f));
+                UIFactory.AddText(UIFactory.Stretch("Order", icon), (i + 1).ToString(), 22, new Color(1f, 1f, 1f, 0.75f), TextAnchor.MiddleCenter);
+                appLabels[i] = UIFactory.AddText(UIFactory.TopLeft("Label", t, 0f, 76f, 110f, 54f), AppName(app), 16, Ink, TextAnchor.UpperCenter);
             }
 
             // --- photos
@@ -684,13 +721,13 @@ namespace PhoneGame
             photos[2] = PhotoSneeze(frame);
             photos[3] = PhotoTriangle(frame);
             photos[4] = PhotoNight(frame);
-            photos[5] = PhotoClass(frame, "Photo_Class1979", new Color(0.62f, 0.52f, 0.38f), new Color(0.3f, 0.22f, 0.15f), new Color(0.4f, 0.31f, 0.21f), "VOSS");
+            photos[5] = PhotoClass(frame, "Photo_Class1979", new Color(0.62f, 0.52f, 0.38f), new Color(0.3f, 0.22f, 0.15f), new Color(0.4f, 0.31f, 0.21f), Loc.L("VOSS", "沃斯"));
             photoCaption = UIFactory.AddText(UIFactory.TopLeft("Caption", photosRoot.transform, 18f, 375f, 368f, 140f), "", 18, Ink, TextAnchor.UpperLeft);
             photoCounter = UIFactory.AddText(UIFactory.TopLeft("Counter", photosRoot.transform, 18f, 8f, 368f, 30f), "", 16, Ink, TextAnchor.MiddleRight);
 
             // --- messages
             msgRoot = UIFactory.Stretch("Messages", screen).gameObject;
-            msgHeader = UIFactory.AddText(UIFactory.TopLeft("Header", msgRoot.transform, 18f, 10f, 368f, 34f), "Messages", 22, Ink, TextAnchor.MiddleLeft);
+            msgHeader = UIFactory.AddText(UIFactory.TopLeft("Header", msgRoot.transform, 18f, 10f, 368f, 34f), AppName(AppMessages), 22, Ink, TextAnchor.MiddleLeft);
             msgHeader.fontStyle = FontStyle.Bold;
             UIFactory.AddImage(UIFactory.TopLeft("Divider", msgRoot.transform, 18f, 46f, 368f, 2f), new Color(0f, 0f, 0f, 0.25f));
             bubbleBg = new Image[Bubbles];
@@ -718,7 +755,7 @@ namespace PhoneGame
 
             // --- contacts
             contactsRoot = UIFactory.Stretch("Contacts", screen).gameObject;
-            UIFactory.AddText(UIFactory.TopLeft("Header", contactsRoot.transform, 18f, 10f, 368f, 34f), "Contacts", 22, Ink, TextAnchor.MiddleLeft).fontStyle = FontStyle.Bold;
+            UIFactory.AddText(UIFactory.TopLeft("Header", contactsRoot.transform, 18f, 10f, 368f, 34f), AppName(AppContacts), 22, Ink, TextAnchor.MiddleLeft).fontStyle = FontStyle.Bold;
             contactCounter = UIFactory.AddText(UIFactory.TopLeft("Counter", contactsRoot.transform, 18f, 10f, 368f, 34f), "", 16, Ink, TextAnchor.MiddleRight);
             RectTransform card = UIFactory.TopLeft("Card", contactsRoot.transform, 18f, 70f, 368f, 420f);
             UIFactory.AddImage(card, new Color(0f, 0f, 0f, 0.08f));

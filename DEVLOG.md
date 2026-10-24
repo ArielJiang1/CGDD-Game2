@@ -102,3 +102,19 @@ Add `## Stage Reflection NNN — title` only when you ask for one: Keep / Change
 - Request: The climax sound felt too positive. It should feel liberating but desolate, a little solemn but not heroic.
 - What changed: The rising chord is now A minor (add9). The phones ring up a minor pentatonic scale, softer and slower. The final chord has open fifths and ninths with no third (neither happy nor sad), swells in instead of hitting, and fades into wind. One distant bell is answered a step lower.
 - Result: Gameplay is unchanged. The ending now reads as release with a cost, which fits Voss closing the door from the outside.
+
+## Interaction 010 — Apps unlock in chapter order, "???" hints, Chinese version
+
+- Date: 2026-10-24
+- Who asked: Ariel & Nina
+- Request: Each chapter should unlock one phone app, so the apps should be listed in unlock order. A passcode hint should read "???" until the player reaches the chapter that unlocks it. Add a Chinese version that can be switched at the start.
+- What changed: The home screen now lists the apps in unlock order (1 Photos, 2 Messages, 3 Contacts, 4 Camera, 5 Search), each with its number. A hint shows "Hint: ???" until the current chapter is the app's chapter or later. Camera and Search have codes ready for the coming chapters. The title page has a Language button (English / 中文, saved). Every story line, phone text, poster, lesson question and end page has a Chinese version and uses a Chinese system font.
+- Result: Win/loss and player verbs are unchanged. Later apps no longer give their answers away early. Chinese players can now play and read the posters.
+
+## Interaction 011 — No more flickering faces on the characters
+
+- Date: 2026-10-24
+- Who asked: Ariel & Nina
+- Request: Two faces of a character model should not lie exactly on top of each other, because that flickers (z-fighting).
+- What changed: After a student or adult is dressed, the scene builder checks every pair of box parts. If two faces lie in the same plane and face the same way (for example the hair top and the back hair, or a part flush with the body block), the smaller part grows by 3 mm on that axis. Scene version 15.
+- Result: Gameplay is unchanged. Characters no longer flicker when the camera moves.

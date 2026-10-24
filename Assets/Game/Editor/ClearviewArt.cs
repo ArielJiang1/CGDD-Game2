@@ -515,6 +515,21 @@ namespace PhoneGame
             Box("Mouth", l, c + new Vector3(0f, -half * 0.68f, front + 0.003f), new Vector3(half * 0.45f, 0.008f, 0.008f), EyeBand);
         }
 
+        /// <summary>
+        /// Neck + shirt collar, designed so no face lies on the body block's faces (that flickered):
+        /// a skin neck in the gap between torso and head, a collar band whose bottom sits 5 mm inside the torso and whose
+        /// top sits inside the head, and two collar points tilted on the chest (a different angle, so never flush).
+        /// torsoTop / chestZ / headBottom come from the white-box body (Fig_Seated: 1.10 / 0.08 / 1.12, Fig_Standing: 1.50 / 0.14 / 1.52).
+        /// </summary>
+        static void Collar(Transform l, float torsoTop, float chestZ, float headBottom, float pointY)
+        {
+            float neckH = headBottom - torsoTop + 0.03f;
+            Box("Neck", l, new Vector3(0f, (torsoTop + headBottom) * 0.5f, -0.005f), new Vector3(0.1f, neckH, 0.1f), Skin);
+            Box("CollarBand", l, new Vector3(0f, torsoTop + 0.012f, 0f), new Vector3(0.155f, 0.034f, 0.15f), Pillow);
+            foreach (int sgn in new[] { -1, 1 })
+                Box("CollarPoint", l, new Vector3(sgn * 0.034f, pointY, chestZ + 0.013f), new Vector3(0.062f, 0.028f, 0.006f), Pillow, false, new Vector3(0f, 0f, sgn * 32f));
+        }
+
         /// <summary>Girl or boy (decided per seat, about half and half).</summary>
         public static void Seated(Transform fig, float rnd) { Seated(fig, rnd > 0.5f); }
 
@@ -540,7 +555,7 @@ namespace PhoneGame
                 Box("EyeBand", l, new Vector3(0f, 1.25f, 0.135f), new Vector3(0.18f, 0.05f, 0.03f), EyeBand);
             }
             Face(l, new Vector3(0f, 1.25f, 0.005f), 0.135f, 0.1225f, hair);
-            Box("Collar", l, new Vector3(0f, 1.08f, 0f), new Vector3(0.3f, 0.04f, 0.2f), Pillow);
+            Collar(l, 1.10f, 0.08f, 1.12f, 1.075f);
             Box("Shirt", l, new Vector3(0f, 0.97f, 0.083f), new Vector3(0.12f, 0.2f, 0.008f), Pillow);
             foreach (int sgn in new[] { -1, 1 })
             {
@@ -595,6 +610,7 @@ namespace PhoneGame
                 Box("Trousers_Thigh", l, new Vector3(0f, 0.525f, 0.25f), new Vector3(0.41f, 0.16f, 0.35f), TrouserMat());
                 Box("Trousers_Shin", l, new Vector3(0f, 0.25f, 0.36f), new Vector3(0.405f, 0.4f, 0.125f), TrouserMat());
             }
+            NoCoplanarFaces(fig);
         }
 
         /// <summary>
@@ -621,7 +637,7 @@ namespace PhoneGame
                 Box("HairBack", l, new Vector3(0f, female ? 1.66f : 1.72f, -0.15f), new Vector3(0.305f, female ? 0.28f : 0.16f, 0.03f), hair);
                 Box("Fringe", l, new Vector3(female ? 0f : 0.03f, 1.77f, 0.152f), new Vector3(female ? 0.29f : 0.22f, 0.04f, 0.02f), hair);
             }
-            Box("Collar", l, new Vector3(0f, 1.48f, 0f), new Vector3(0.36f, 0.05f, 0.3f), Pillow);
+            Collar(l, 1.50f, 0.14f, 1.52f, 1.455f);
             Box("Shirt", l, new Vector3(0f, 1.3f, 0.143f), new Vector3(0.12f, 0.3f, 0.008f), Pillow);
             Box("Badge", l, new Vector3(0.12f, 1.25f, 0.145f), new Vector3(0.06f, 0.04f, 0.01f), FadedYellowMat());
             foreach (int sgn in new[] { -1, 1 })
@@ -648,6 +664,109 @@ namespace PhoneGame
                 Vector3 p = g.transform.localPosition;
                 if (p.z < 0.32f) g.transform.localPosition = new Vector3(p.x, p.y, 0.32f);
             }
+            NoCoplanarFaces(fig);
+        }
+
+        /// <summary>
+        /// Anti-flicker (z-fighting): two box parts of a figure whose faces lie in the same plane and face the same way
+        /// (e.g. hair flush with the top of the head, a shirt flush with the torso) flicker when the camera moves.
+        /// For every such pair the smaller part grows by a few millimetres on that axis, so its face sits clearly in
+        /// front. Runs a few passes, because one fix can create a new flush pair.
+        /// </summary>
+        public static void NoCoplanarFaces(Transform fig, float gap = 0.004f)
+        {
+            for (int pass = 0; pass < 4; pass++)
+            {
+                List<Transform> boxes = new List<Transform>();
+                List<Part> fixedParts = new List<Part>();
+                int fixes = 0;
+                foreach (MeshFilter mf in fig.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    Renderer rr = mf.GetComponent<Renderer>();
+                    if (mf.sharedMesh == null || rr == null || !rr.enabled) continue;
+                    if (mf.sharedMesh.name == "Cube") boxes.Add(mf.transform);
+                    else AddBlockParts(mf.transform, mf.sharedMesh.name, fixedParts);   // the white-box body: never resized
+                }
+                // a part flush with the white-box body grows outward
+                foreach (Transform b in boxes)
+                    foreach (Part f in fixedParts)
+                    {
+                        if (Quaternion.Angle(b.rotation, f.rot) > 0.05f) continue;
+                        int k = FlushAxis(f.centre, f.half, f.rot, b.position, Half(b));
+                        if (k >= 0) { Grow(b, k, gap); fixes++; break; }
+                    }
+                for (int i = 0; i < boxes.Count; i++)
+                    for (int j = i + 1; j < boxes.Count; j++)
+                    {
+                        Transform A = boxes[i], B = boxes[j];
+                        if (Quaternion.Angle(A.rotation, B.rotation) > 0.05f) continue;   // only parts with the same orientation
+                        int k = FlushAxis(A.position, Half(A), A.rotation, B.position, Half(B));
+                        if (k < 0) continue;
+                        Vector3 ha = Half(A), hb = Half(B);
+                        Grow(ha.x * ha.y * ha.z >= hb.x * hb.y * hb.z ? B : A, k, gap);
+                        fixes++;
+                    }
+                if (fixes == 0) break;
+            }
+        }
+
+        struct Part { public Vector3 centre, half; public Quaternion rot; }
+
+        static Vector3 Half(Transform t)
+        {
+            Vector3 h = t.lossyScale * 0.5f;
+            return new Vector3(Mathf.Abs(h.x), Mathf.Abs(h.y), Mathf.Abs(h.z));
+        }
+
+        /// <summary>The boxes the white-box kit (BlockoutKitBuilder) welds into its figure meshes, in the mesh's local space.</summary>
+        static void AddBlockParts(Transform t, string mesh, List<Part> into)
+        {
+            List<Vector3[]> mm = new List<Vector3[]>();
+            if (mesh == "Fig_Seated")
+            {
+                mm.Add(new[] { new Vector3(-0.2f, 0.45f, -0.16f), new Vector3(0.2f, 1.10f, 0.08f) });
+                mm.Add(new[] { new Vector3(-0.2f, 0.45f, 0.08f), new Vector3(0.2f, 0.60f, 0.42f) });
+                mm.Add(new[] { new Vector3(-0.2f, 0f, 0.30f), new Vector3(0.2f, 0.45f, 0.42f) });
+                mm.Add(new[] { new Vector3(-0.13f, 1.12f, -0.12f), new Vector3(0.13f, 1.38f, 0.12f) });
+            }
+            else if (mesh == "Fig_Seated_Eyes") mm.Add(new[] { new Vector3(-0.09f, 1.225f, 0.12f), new Vector3(0.09f, 1.275f, 0.15f) });
+            else if (mesh == "Fig_Standing")
+            {
+                mm.Add(new[] { new Vector3(-0.225f, 0f, -0.14f), new Vector3(0.225f, 1.5f, 0.14f) });
+                mm.Add(new[] { new Vector3(-0.14f, 1.52f, -0.14f), new Vector3(0.14f, 1.8f, 0.14f) });
+            }
+            else if (mesh == "Fig_Standing_Eyes") mm.Add(new[] { new Vector3(-0.1f, 1.575f, 0.14f), new Vector3(0.1f, 1.625f, 0.17f) });
+            foreach (Vector3[] b in mm)
+            {
+                Vector3 c = (b[0] + b[1]) * 0.5f, h = (b[1] - b[0]) * 0.5f;
+                Vector3 s = t.lossyScale;
+                into.Add(new Part { centre = t.TransformPoint(c), half = new Vector3(Mathf.Abs(h.x * s.x), Mathf.Abs(h.y * s.y), Mathf.Abs(h.z * s.z)), rot = t.rotation });
+            }
+        }
+
+        /// <summary>Axis (0/1/2) on which box B has a face in the same plane, facing the same way, as box A (overlapping); -1 if none.</summary>
+        static int FlushAxis(Vector3 ca, Vector3 ha, Quaternion ra, Vector3 cb, Vector3 hb)
+        {
+            const float near = 0.0025f;
+            Vector3 d = Quaternion.Inverse(ra) * (cb - ca);
+            for (int k = 0; k < 3; k++)
+            {
+                int k1 = (k + 1) % 3, k2 = (k + 2) % 3;
+                if (Mathf.Abs(d[k1]) >= ha[k1] + hb[k1] - 0.0005f || Mathf.Abs(d[k2]) >= ha[k2] + hb[k2] - 0.0005f) continue;
+                foreach (int sgn in new[] { -1, 1 })
+                    if (Mathf.Abs(sgn * ha[k] - (d[k] + sgn * hb[k])) < near) return k;
+            }
+            return -1;
+        }
+
+        /// <summary>Makes a box 2 x gap longer on one of its own axes (each face moves out by 'gap').</summary>
+        static void Grow(Transform b, int k, float gap)
+        {
+            Vector3 ls = b.localScale;
+            float per = Mathf.Abs(ls[k]) > 1e-5f ? Mathf.Abs(b.lossyScale[k] / ls[k]) : 1f;
+            if (per < 1e-5f) per = 1f;
+            ls[k] += Mathf.Sign(ls[k] == 0f ? 1f : ls[k]) * 2f * gap / per;
+            b.localScale = ls;
         }
 
         static Material fy;

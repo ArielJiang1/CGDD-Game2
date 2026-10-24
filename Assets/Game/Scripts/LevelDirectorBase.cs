@@ -57,7 +57,7 @@ namespace PhoneGame
         /// <summary>Label shown above the authority's lines ("TEACHER", "LUNCH MONITOR"...).</summary>
         protected string authorityLabel = "TEACHER";
         protected float authorityPitch = 0.8f;
-        protected string Name { get { return GameFlow.playerName; } }
+        protected string Name { get { return Loc.Chinese && GameFlow.playerName == "Student" ? "同学" : GameFlow.playerName; } }
 
         readonly Queue<Line> queue = new Queue<Line>();
         Line current;
@@ -203,7 +203,7 @@ namespace PhoneGame
                 speechBg.color = SpeechBg;
                 speechAccent.color = pa ? new Color(0.6f, 0.62f, 0.66f) : Red;
                 paStripe.enabled = false;
-                speechWho.text = pa ? "LOUDSPEAKER  (school announcement)" : (l.speaker ?? "").ToUpper();
+                speechWho.text = pa ? Loc.L("LOUDSPEAKER  (school announcement)", "广播（学校通知）") : Loc.T(l.speaker ?? "").ToUpper();
                 speechWho.color = pa ? new Color(0.72f, 0.74f, 0.78f) : new Color(1f, 0.45f, 0.38f);
                 speechText.color = SpeechInk;
                 speechText.text = "";
@@ -285,6 +285,9 @@ namespace PhoneGame
         /// <summary>Rules in the player's thoughts are highlighted so they stand out.</summary>
         protected static string Rule(string s) { return "<b><color=#ff9a6e>" + s + "</color></b>"; }
 
+        /// <summary>English / Chinese pair, picked by the language setting (Loc).</summary>
+        protected static string L(string en, string zh) { return Loc.L(en, zh); }
+
         // ------------------------------------------------------------------ interaction
         /// <summary>Raycast from the eye; returns the prompt to show (or null) and uses the thing on [E].</summary>
         protected string RaycastInteract()
@@ -300,7 +303,7 @@ namespace PhoneGame
                 if (it != null && it.active && it.onUse != null)
                 {
                     if (GameInput.InteractDown()) it.onUse();
-                    return "[E]  " + it.prompt;
+                    return "[E]  " + Loc.T(it.prompt);
                 }
                 if (!hit.collider.isTrigger) return null;   // something solid is in front
             }
@@ -382,8 +385,8 @@ namespace PhoneGame
         /// <summary>The warning count spoken after the line (never shown as a number on screen).</summary>
         protected virtual string StrikeSuffix(int n, bool pa)
         {
-            if (pa) return n == 1 ? "  This is your first reminder. You will receive three." : "  This is your second reminder. There is no fourth reminder.";
-            return n == 1 ? "  That's one warning. You get three." : "  That's two. One more, and whatever you're hiding is mine.";
+            if (pa) return n == 1 ? Loc.L("  This is your first reminder. You will receive three.", "  这是第一次提醒。您一共会收到三次。") : Loc.L("  This is your second reminder. There is no fourth reminder.", "  这是第二次提醒。不会有第四次提醒。");
+            return n == 1 ? Loc.L("  That's one warning. You get three.", "  这是第一次警告。你一共只有三次。") : Loc.L("  That's two. One more, and whatever you're hiding is mine.", "  第二次了。再有一次，你藏的东西就归我了。");
         }
 
         /// <summary>One of the three chances is used. Only the voices tell the player.</summary>
@@ -417,10 +420,10 @@ namespace PhoneGame
             Color fc = fade.color; fc.a = 1f; fade.color = fc;
             chapterRoot.SetActive(true);
             chapterLabelText.text = ""; chapterTitleText.text = ""; chapterTimeText.text = ""; chapterSloganText.text = "";
-            yield return TypeInto(chapterLabelText, label, 30f);
-            yield return TypeInto(chapterTitleText, title, 18f);
-            yield return TypeInto(chapterTimeText, time, 30f);
-            chapterSloganText.text = "CLEARVIEW ACADEMY  -  WHAT IS SEEN, IS SAFE.";
+            yield return TypeInto(chapterLabelText, Loc.T(label), 30f);
+            yield return TypeInto(chapterTitleText, Loc.T(title), 18f);
+            yield return TypeInto(chapterTimeText, Loc.T(time), 30f);
+            chapterSloganText.text = Loc.L("CLEARVIEW ACADEMY  -  WHAT IS SEEN, IS SAFE.", "明鉴学院  -  被看见的，就是安全的。");
             float t = 0f;
             while (t < hold && !GameInput.AnyKeyDown()) { t += Time.deltaTime; yield return null; }
             chapterRoot.SetActive(false);
@@ -528,7 +531,7 @@ namespace PhoneGame
             objectivePanel = UIFactory.Rect("Objective", root, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(28f, -170f), new Vector2(PanelW, 100f));
             objectiveBg = UIFactory.AddImage(objectivePanel, PanelBg);
             UIFactory.AddImage(UIFactory.Rect("Bar", objectivePanel, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(5f, 0f)), Amber);
-            objectiveLabel = UIFactory.AddText(UIFactory.TopLeft("Label", objectivePanel, PanelPad, 12f, PanelW - 2f * PanelPad, 22f), "OBJECTIVE", 16, Amber, TextAnchor.UpperLeft);
+            objectiveLabel = UIFactory.AddText(UIFactory.TopLeft("Label", objectivePanel, PanelPad, 12f, PanelW - 2f * PanelPad, 22f), Loc.L("OBJECTIVE", "当前目标"), 16, Amber, TextAnchor.UpperLeft);
             objectiveLabel.fontStyle = FontStyle.Bold;
             objectiveDivider = UIFactory.AddImage(UIFactory.TopLeft("Divider", objectivePanel, PanelPad, 37f, PanelW - 2f * PanelPad, 1f), new Color(1f, 0.8f, 0.45f, 0.35f));
             objectiveText = UIFactory.AddText(UIFactory.TopLeft("Text", objectivePanel, PanelPad, 46f, PanelW - 2f * PanelPad, 40f), "", 19, new Color(0.95f, 0.94f, 0.9f), TextAnchor.UpperLeft);
@@ -556,7 +559,7 @@ namespace PhoneGame
             speechBox.SetActive(false);
 
             // WARNING flash
-            warningText = UIFactory.AddText(UIFactory.Rect("Warning", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -190f), new Vector2(900f, 90f)), "WARNING", 72, new Color(1f, 0.12f, 0.08f), TextAnchor.MiddleCenter);
+            warningText = UIFactory.AddText(UIFactory.Rect("Warning", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -190f), new Vector2(900f, 90f)), Loc.L("WARNING", "警告"), 72, new Color(1f, 0.12f, 0.08f), TextAnchor.MiddleCenter);
             warningText.fontStyle = FontStyle.Bold;
             UIFactory.AddShadow(warningText, new Color(0f, 0f, 0f, 0.9f), 3f);
             warningText.enabled = false;

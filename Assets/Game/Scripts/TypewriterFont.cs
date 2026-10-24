@@ -4,18 +4,20 @@ using UnityEngine.UI;
 namespace PhoneGame
 {
     /// <summary>
-    /// Scenes built in the editor can only save the built-in font. At runtime this swaps every UI Text under
-    /// this object to the typewriter (monospace) font, for the "typed in a professional, almost robotic way" look.
+    /// Scenes built in the editor can only save the built-in font and English text. At runtime this swaps every
+    /// UI Text under this object to the typewriter (monospace) font - or, in Chinese, translates the text
+    /// (LocTable) and uses a Chinese font.
     /// </summary>
     public class TypewriterFont : MonoBehaviour
     {
         void Awake()
         {
-            Font mono = UIFactory.MonoFont;
-            if (mono == null) return;
+            bool zh = Loc.Chinese;
+            Font f = zh ? UIFactory.CjkFont : UIFactory.MonoFont;
             foreach (Text t in GetComponentsInChildren<Text>(true))
             {
-                if (t.font == UIFactory.DefaultFont) t.font = mono;
+                if (zh) t.text = Loc.T(t.text);
+                if (f != null && t.font == UIFactory.DefaultFont) t.font = f;
             }
         }
     }

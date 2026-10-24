@@ -87,14 +87,14 @@ namespace PhoneGame
         {
             if (cubbyZone != null)
             {
-                cubbyZone.prompt = "Search your desk";
+                cubbyZone.prompt = L("Search your desk", "翻找课桌");
                 cubbyZone.active = false;   // unlocked after the roll call
                 cubbyZone.onUse = () => { rig.EnterInspect(); SetZone(false); cubbySearched = true; };
             }
-            if (books != null) { books.prompt = "Move the books aside"; books.onUse = () => StartCoroutine(MoveBooks()); }
-            if (loosePanel != null) { loosePanel.prompt = "The back panel is loose - pull it out"; loosePanel.active = false; loosePanel.onUse = () => StartCoroutine(PullPanel()); }
-            if (hiddenPhone != null) { hiddenPhone.prompt = "Take the phone"; hiddenPhone.active = false; hiddenPhone.onUse = TakePhone; }
-            if (frontStudent != null) { frontStudent.prompt = "Tap their shoulder twice"; frontStudent.active = false; frontStudent.onUse = () => StartCoroutine(StudentTurns()); }
+            if (books != null) { books.prompt = L("Move the books aside", "把书挪到一边"); books.onUse = () => StartCoroutine(MoveBooks()); }
+            if (loosePanel != null) { loosePanel.prompt = L("The back panel is loose - pull it out", "背板松了——把它拉出来"); loosePanel.active = false; loosePanel.onUse = () => StartCoroutine(PullPanel()); }
+            if (hiddenPhone != null) { hiddenPhone.prompt = L("Take the phone", "拿起手机"); hiddenPhone.active = false; hiddenPhone.onUse = TakePhone; }
+            if (frontStudent != null) { frontStudent.prompt = L("Tap their shoulder twice", "轻拍两下前桌的肩膀"); frontStudent.active = false; frontStudent.onUse = () => StartCoroutine(StudentTurns()); }
         }
 
         void SetZone(bool on)
@@ -116,7 +116,7 @@ namespace PhoneGame
             if (phone.hasPhone && phone.RaisedOnce && !toldAboutDanger)
             {
                 toldAboutDanger = true;
-                Thought("If he can see it, " + Rule("the phone shakes and turns red") + ".\nKeep it out of his sight.");
+                Thought(L("If he can see it, ", "只要他看得见，") + Rule(L("the phone shakes and turns red", "手机就会抖动、变红")) + L(".\nKeep it out of his sight.", "。\n别让他看见。"));
             }
 
             UpdateObjective();
@@ -127,13 +127,13 @@ namespace PhoneGame
 
         void UpdateObjective()
         {
-            if (rig.CurrentMode == PlayerRig.Mode.Walk) { SetObjective("Walk into the classroom.\n(W + mouse)"); return; }
+            if (rig.CurrentMode == PlayerRig.Mode.Walk) { SetObjective(L("Walk into the classroom.\n(W + mouse)", "走进教室。\n（W + 鼠标）")); return; }
             if (!seated) { SetObjective(""); return; }
-            if (rollCall) { SetObjective("Roll call.\nPress 1 when YOUR name is called."); return; }
-            if (!phone.hasPhone) { SetObjective("Search your desk.\nLook down at the cubby and press E."); return; }
-            if (!phone.IsUnlocked(PhoneController.AppPhotos)) { SetObjective("Sit up, HOLD RIGHT MOUSE.\nPhone code = the year the school was founded. Then PHOTOS = lights out (24-hour clock)."); return; }
-            if (!phone.ClueFound) { SetObjective("Look through PHOTOS (A / D).\nOne of them shows a mark you can find in this room."); return; }
-            SetObjective("Tap the shoulder of the student\nwith the chalk triangle (E).");
+            if (rollCall) { SetObjective(L("Roll call.\nPress 1 when YOUR name is called.", "点名。\n叫到你的名字时按 1。")); return; }
+            if (!phone.hasPhone) { SetObjective(L("Search your desk.\nLook down at the cubby and press E.", "翻找课桌。\n低头看向桌肚，按 E。")); return; }
+            if (!phone.IsUnlocked(PhoneController.AppPhotos)) { SetObjective(L("Sit up, HOLD RIGHT MOUSE.\nPhone code = the year the school was founded. Then PHOTOS = lights out (24-hour clock).", "坐直，按住鼠标右键。\n手机密码 = 学校建校的年份。相册密码 = 熄灯时间（24 小时制）。")); return; }
+            if (!phone.ClueFound) { SetObjective(L("Look through PHOTOS (A / D).\nOne of them shows a mark you can find in this room.", "翻看相册（A / D）。\n其中一张照片上的记号，就在这间教室里。")); return; }
+            SetObjective(L("Tap the shoulder of the student\nwith the chalk triangle (E).", "轻拍椅背上有粉笔三角的\n那位同学（E）。"));
         }
 
         bool EnteredClassroom(Vector3 p) { return In(p, backDoorZone) || In(p, frontDoorZone); }
@@ -144,15 +144,15 @@ namespace PhoneGame
         {
             // quick start: he calls you in almost immediately; you can walk once he has spoken
             rig.Lock();
-            caption.text = "MONDAY.  FIRST PERIOD.";
+            caption.text = L("MONDAY.  FIRST PERIOD.", "星期一。第一节课。");
             if (bellClip != null) ambient.Play(bellClip, 0.85f);
             StartCoroutine(Fade(1f, 0f, 1.2f));
             yield return new WaitForSeconds(bellClip != null ? 2.6f : 0.5f);
-            Authority("(from inside the classroom)  ...The bell has rung. Whoever is standing at the door. In. Now.", 4.5f, true, 0.3f);
+            Authority(L("(from inside the classroom)  ...The bell has rung. Whoever is standing at the door. In. Now.", "（教室里传来）……铃已经响了。站在门口的那个。进来。现在。"), 4.5f, true, 0.3f);
             yield return new WaitForSeconds(1.2f);
             caption.text = "";
             if (rig.CurrentMode == PlayerRig.Mode.Locked && !seated) rig.AllowWalk();
-            Thought("Late. Everyone is going to stare.\nW + mouse: walk into the classroom", 30f, false, 0.3f);
+            Thought(L("Late. Everyone is going to stare.\nW + mouse: walk into the classroom", "迟到了。所有人都会盯着我看。\nW + 鼠标：走进教室"), 30f, false, 0.3f);
         }
 
         void BeginPull()
@@ -172,9 +172,9 @@ namespace PhoneGame
             staring = true;
             if (teacher != null) teacher.CallOn(rig.transform);
             // short gaps here - these lines play while you are being walked to your seat
-            Authority("You're late, " + Name + ".", 2.8f, true, 0.3f);
-            Authority("Everyone has been waiting for you.", 3f, false, 0.3f);
-            Authority("Sit.", 2f, false, 0.5f);
+            Authority(L("You're late, " + Name + ".", Name + "，你迟到了。"), 2.8f, true, 0.3f);
+            Authority(L("Everyone has been waiting for you.", "所有人都在等你。"), 3f, false, 0.3f);
+            Authority(L("Sit.", "坐下。"), 2f, false, 0.5f);
         }
 
         void OnSeated()
@@ -188,56 +188,57 @@ namespace PhoneGame
         {
             rollCall = true;
             yield return WaitIdle();
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(0.3f);
             staring = false;
 
-            Authority("Roll call. Answer when you hear your name.", 5f);
+            Authority(L("Roll call. Answer when you hear your name.", "点名。听到名字就答到。"), 3f, false, 0.4f);
             yield return RollName(namesBefore.Length > 0 ? namesBefore[0] : null);
-            Thought(Rule("Every device in this school is monitored.") + "\nIf he sees a phone, he takes it.", 8.5f);
+            Thought(Rule(L("Every device in this school is monitored.", "这所学校的每台设备都被监控着。")) + L("\nIf he sees a phone, he takes it.", "\n只要他看见手机，就会收走。"), 5.5f, false, 0.4f);
             yield return RollName(namesBefore.Length > 1 ? namesBefore[1] : null);
-            Thought("He calls on people at random.\n" + Rule("Listen to him") + " - he only asks about what he has said.", 8.5f);
+            Thought(L("He calls on people at random.\n", "他会随机点人回答问题。\n") + Rule(L("Listen to him", "认真听他讲")) + L(" - he only asks about what he has said.", "——他只问他讲过的内容。"), 5.5f, false, 0.4f);
             yield return RollName(namesBefore.Length > 2 ? namesBefore[2] : null);
-            Thought("The older kids say he gives " + Rule("three warnings") + ".\nAfter the third, he takes whatever you're hiding.", 9f);
+            Thought(L("The older kids say he gives ", "学长学姐说他会给") + Rule(L("three warnings", "三次警告")) + L(".\nAfter the third, he takes whatever you're hiding.", "。\n第三次之后，你藏的东西就归他了。"), 6f, false, 0.4f);
             yield return WaitIdle();
 
             // the player's own name
             bool answered = false;
             for (int attempt = 0; attempt < 2 && !answered && !ended; attempt++)
             {
-                Authority(attempt == 0 ? Name + "." : Name + ". I said your name.", 99f, true);
-                ShowQuestion("Your name was called.\n\n1    \"Here.\"");
+                Authority(attempt == 0 ? Name + L(".", "。") : L(Name + ". I said your name.", Name + "。我叫你的名字了。"), 99f, true);
+                ShowQuestion(L("Your name was called.\n\n1    \"Here.\"", "叫到你的名字了。\n\n1    \"到。\""));
                 float t = 0f;
                 while (t < answerSeconds && !answered)
                 {
                     t += Time.deltaTime;
                     questionTimer.rectTransform.anchorMax = new Vector2(1f - t / answerSeconds, 1f);
-                    questionStatus.text = phone.IsExposed ? "Put the phone down first!" : "Press 1";
+                    questionStatus.text = phone.IsExposed ? L("Put the phone down first!", "先把手机放下！") : L("Press 1", "按 1");
                     if (!phone.IsExposed && GameInput.DigitDown() == 1) answered = true;
                     yield return null;
                 }
                 questionBox.SetActive(false);
                 ClearLine();
             }
-            if (answered) { StudentSay(Name, "Here.", 2.5f); Authority("...Late, and slow. Noted.", 4.5f); }
-            else Authority("...Present, I suppose. Barely.", 4.5f);
+            if (answered) { StudentSay(Name, L("Here.", "到。"), 1.6f, false, 0.3f); Authority(L("...Late, and slow. Noted.", "……迟到，还反应慢。记下了。"), 3f, false, 0.4f); }
+            else Authority(L("...Present, I suppose. Barely.", "……算你在吧。勉强。"), 3f, false, 0.4f);
 
-            Thought("And this seat... they say whoever sits here\n" + Rule("finds something in the desk") + ".", 8.5f);
+            Thought(L("And this seat... they say whoever sits here\n", "还有这个座位……据说坐在这里的人\n") + Rule(L("finds something in the desk", "都会在课桌里找到点什么")) + L(".", "。"), 6f, false, 0.4f);
             foreach (string n in namesAfter) yield return RollName(n);
-            Authority("Good. Today: the Founding Charter. Listen carefully. I will be asking questions.", 7f);
+            Authority(L("Good. Today: the Founding Charter. Listen carefully. I will be asking questions.", "很好。今天讲《建校章程》。认真听，我会提问。"), 5f, false, 0.4f);
             yield return WaitIdle();
 
             rollCall = false;
             if (cubbyZone != null) cubbyZone.active = true;
             if (teacher != null) teacher.EndCall();
             lecture = StartCoroutine(Lecture());
-            StartCoroutine(Reminder("(Something about this desk feels off... look down at the cubby.)", () => cubbySearched, 30f));
+            StartCoroutine(Reminder(L("(Something about this desk feels off... look down at the cubby.)", "（这张课桌有点不对劲……低头看看桌肚。）"), () => cubbySearched, 30f));
         }
 
         IEnumerator RollName(string n)
         {
             if (string.IsNullOrEmpty(n)) yield break;
-            Authority(n + ".", 3.5f);
-            StudentSay(n, "Here.", 3f);
+            string shown = Loc.T(n);
+            Authority(shown + L(".", "。"), 1.6f, false, 0.25f);
+            StudentSay(shown, L("Here.", "到。"), 1.3f, false, 0.35f);
             yield return null;
         }
 
@@ -270,7 +271,7 @@ namespace PhoneGame
             {
                 if (m == PlayerRig.Mode.Inspect && GameInput.SpaceDown()) { rig.BackToSeat(); SetZone(true); SetPrompt(null); return; }
                 p = RaycastInteract();
-                if (p == null && m == PlayerRig.Mode.Inspect) p = "[Space]  Sit back up";
+                if (p == null && m == PlayerRig.Mode.Inspect) p = L("[Space]  Sit back up", "[空格]  坐直");
             }
             SetPrompt(p);
         }
@@ -297,7 +298,7 @@ namespace PhoneGame
             for (float k = 0f; k < 1f; k += Time.deltaTime / 0.45f) { t.localPosition = Vector3.Lerp(b, c2, k * k * (3f - 2f * k)); yield return null; }
             t.localPosition = c2;
             if (hiddenPhone != null) hiddenPhone.active = true;
-            Thought("There's something hidden behind it.", 4f, true);
+            Thought(L("There's something hidden behind it.", "后面藏着东西。"), 4f, true);
         }
 
         void TakePhone()
@@ -306,8 +307,8 @@ namespace PhoneGame
             hiddenPhone.gameObject.SetActive(false);
             phone.hasPhone = true;
             nextCall = Random.Range(callInterval.x, callInterval.y);
-            Thought("(An old phone. A sticky note on the back: \"it opens the year it all began.\")", 8f, true);
-            StartCoroutine(Reminder("Sit up [Space], then " + Rule("HOLD RIGHT MOUSE") + " to take out the phone.", () => phone.RaisedOnce || ended, 20f));
+            Thought(L("(An old phone. A sticky note on the back: \"it opens the year it all began.\")", "（一部旧手机。背面贴着便利贴：\"一切开始的那一年，就能打开它。\"）"), 8f, true);
+            StartCoroutine(Reminder(L("Sit up [Space], then ", "先坐直 [空格]，再") + Rule(L("HOLD RIGHT MOUSE", "按住鼠标右键")) + L(" to take out the phone.", "拿出手机。"), () => phone.RaisedOnce || ended, 20f));
         }
 
         IEnumerator StudentTurns()
@@ -317,7 +318,7 @@ namespace PhoneGame
             phone.allowRaise = false;
             rig.Lock();
             if (lecture != null) StopCoroutine(lecture);
-            Thought("(You tap their shoulder. Twice.)", 2.5f, true);
+            Thought(L("(You tap their shoulder. Twice.)", "（你拍了拍前桌的肩膀。两下。）"), 2.5f, true);
             yield return new WaitForSeconds(2f);
             // they turn round to face you, chair and all (the chair spins with them, so nothing clips)
             Transform s = frontStudent.transform;
@@ -334,8 +335,8 @@ namespace PhoneGame
             s.rotation = r0 * Quaternion.Euler(0f, 180f, 0f);
             if (frontChair != null) frontChair.rotation = c0 * Quaternion.Euler(0f, 180f, 0f);
             yield return new WaitForSeconds(0.8f);
-            StudentSay("STUDENT (whispering)", "...Took you long enough. Keep it hidden.", 4.5f);
-            StudentSay("STUDENT (whispering)", "After the bell - the stairwell. I'll show you where we really go.", 5.5f);
+            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("...Took you long enough. Keep it hidden.", "……你可真慢。藏好它。"), 4.5f);
+            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("After the bell - the stairwell. I'll show you where we really go.", "下课后——楼梯间。我带你去我们真正去的地方。"), 5.5f);
             yield return new WaitForSeconds(1f);
             yield return WaitIdle();
             yield return FinishLevel("contact", 1.2f);
@@ -346,11 +347,11 @@ namespace PhoneGame
         {
             bool seen = phone.IsExposed && teacher != null && teacher.Running && vision != null && vision.CanSee(phoneExposurePoint.position, rig.transform);
             if (AccumulateDanger(seen ? 1f / Mathf.Max(0.05f, noticeSeconds) : 0f))
-                Strike("...What was that? Eyes up here, " + Name + ".");
+                Strike(L("...What was that? Eyes up here, " + Name + ".", "……那是什么？" + Name + "，看这边。"));
             if (phone.ClueFound && frontStudent != null && !frontStudent.active && !ended)
             {
                 frontStudent.active = true;
-                Thought("A chalk triangle... " + Rule("the chair in front of me has one") + ".", 7f);
+                Thought(L("A chalk triangle... ", "粉笔三角……") + Rule(L("the chair in front of me has one", "前桌的椅背上就有一个")) + L(".", "。"), 7f);
             }
         }
 
@@ -361,14 +362,14 @@ namespace PhoneGame
             phone.allowRaise = false;
             rig.Lock();
             if (lecture != null) StopCoroutine(lecture);
-            Authority("That's three, " + Name + ". Give it to me.", 6f, true);
+            Authority(L("That's three, " + Name + ". Give it to me.", "第三次了，" + Name + "。交出来。"), 6f, true);
             if (teacher != null && takePhoneStandPoint != null) teacher.Approach(takePhoneStandPoint.position, rig.transform);
             staring = true;
             float t = 0f;
             yield return new WaitForSeconds(0.5f);
             while (teacher != null && !teacher.HasArrived && t < 8f) { t += Time.deltaTime; yield return null; }
             yield return WaitIdle();
-            Thought("(He takes the phone. Everyone saw.)", 4f, true);
+            Thought(L("(He takes the phone. Everyone saw.)", "（他拿走了手机。所有人都看见了。）"), 4f, true);
             yield return WaitIdle();
             yield return Caught("taken");
         }
@@ -384,12 +385,12 @@ namespace PhoneGame
                 {
                     int idx = i % teacher.lines.Count;
                     if (idx > linesSaid) linesSaid = idx;
-                    Authority(teacher.lines[idx].text);
+                    Authority(Loc.T(teacher.lines[idx].text));
                     i++;
                     yield return WaitIdle();
                     // the school interrupts, politely (dark humour)
-                    if (i == 5 && !pa1) { pa1 = true; PA("This is a reminder that you are happy. Thank you."); yield return WaitIdle(); }
-                    if (i == 10 && !pa2) { pa2 = true; PA("Reminder: the pigeons in the courtyard are not your friends."); yield return WaitIdle(); }
+                    if (i == 5 && !pa1) { pa1 = true; PA(L("This is a reminder that you are happy. Thank you.", "温馨提示：您很快乐。谢谢。")); yield return WaitIdle(); }
+                    if (i == 10 && !pa2) { pa2 = true; PA(L("Reminder: the pigeons in the courtyard are not your friends.", "提醒：庭院里的鸽子不是您的朋友。")); yield return WaitIdle(); }
                     // a pause between lines - this is where the player's thoughts get their turn
                     float t = 0f;
                     while (t < 3f && !ended) { if (DialogueIdle) t += Time.deltaTime; yield return null; }
@@ -411,9 +412,9 @@ namespace PhoneGame
             callTimer -= Time.deltaTime;
             questionTimer.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(callTimer / answerSeconds), 1f);
             bool canAnswer = rig.CurrentMode == PlayerRig.Mode.Seated && !phone.IsExposed;
-            if (phone.IsExposed) questionStatus.text = "PUT THE PHONE DOWN to answer!  (release Right Mouse)";
-            else if (rig.CurrentMode != PlayerRig.Mode.Seated) questionStatus.text = "SIT UP to answer!  [Space]";
-            else questionStatus.text = "Press 1, 2 or 3";
+            if (phone.IsExposed) questionStatus.text = L("PUT THE PHONE DOWN to answer!  (release Right Mouse)", "先放下手机再回答！（松开鼠标右键）");
+            else if (rig.CurrentMode != PlayerRig.Mode.Seated) questionStatus.text = L("SIT UP to answer!  [Space]", "坐直才能回答！[空格]");
+            else questionStatus.text = L("Press 1, 2 or 3", "按 1、2 或 3");
 
             if (canAnswer)
             {
@@ -430,9 +431,9 @@ namespace PhoneGame
             calling = true;
             callTimer = answerSeconds;
             teacher.CallOn(rig.transform);
-            Authority(Name + ".  " + question.question, answerSeconds + 1f, true);
-            string q = question.question + "\n";
-            for (int i = 0; i < question.options.Length; i++) q += "\n" + (i + 1) + "    " + question.options[i];
+            Authority(Name + L(".  ", "。") + Loc.T(question.question), answerSeconds + 1f, true);
+            string q = Loc.T(question.question) + "\n";
+            for (int i = 0; i < question.options.Length; i++) q += "\n" + (i + 1) + "    " + Loc.T(question.options[i]);
             ShowQuestion(q);
         }
 
@@ -459,9 +460,9 @@ namespace PhoneGame
             questionBox.SetActive(false);
             teacher.EndCall();
             nextCall = Random.Range(callInterval.x, callInterval.y);
-            if (correct) Authority("...Correct. Hm. Keep listening.", 4f, true);
-            else if (timedOut) Strike("I asked you a question, " + Name + ".");
-            else Strike("Wrong. Are you even listening?");
+            if (correct) Authority(L("...Correct. Hm. Keep listening.", "……正确。哼。继续听。"), 4f, true);
+            else if (timedOut) Strike(L("I asked you a question, " + Name + ".", Name + "，我在问你问题。"));
+            else Strike(L("Wrong. Are you even listening?", "错了。你到底有没有在听？"));
         }
     }
 }

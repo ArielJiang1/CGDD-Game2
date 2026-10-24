@@ -39,7 +39,7 @@ namespace PhoneGame
         /// Bump this whenever the scene-building code or serialized defaults change. Unity compares it on load
         /// (GameSceneAutoRebuild) and offers to rebuild out-of-date scenes, so nobody plays an old build by accident.
         /// </summary>
-        public const int ScenesVersion = 13;
+        public const int ScenesVersion = 16;
 
         [MenuItem("Game/Build All Scenes (Title, 4 Chapters, End)", false, 1)]
         public static void BuildAllMenu() { BuildAll(false); }

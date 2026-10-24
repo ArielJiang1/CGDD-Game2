@@ -71,7 +71,7 @@ namespace PhoneGame
             phone.allowRaise = false;
             phone.phoneClock = "12:41";
             phone.appUnlocked[PhoneController.AppPhotos] = true;
-            phone.lockNotification = "No new messages.";
+            phone.lockNotification = L("No new messages.", "没有新信息。");
             phone.onMessageArrived = () => { if (!phone.IsExposed) PhoneBuzz(); };
             if (staffDoor != null) { staffDoor.prompt = "Slip through the STAFF door"; staffDoor.onUse = UseDoor; }
             if (bottomDoor != null) { bottomDoor.prompt = "Push the door open"; bottomDoor.onUse = PushBottomDoor; }
@@ -112,16 +112,16 @@ namespace PhoneGame
         IEnumerator Opening()
         {
             yield return ChapterCard("CHAPTER 2", "LUNCH", "MONDAY  -  12:40");
-            phone.Receive("Triangle", "check Messages. the code is when we eat.");
-            PA("Good afternoon, Clearview. Lunch begins at twelve-forty. Twelve. Forty.", 6.5f);
-            PA("Please chew each bite thirty-two times. Thank you for eating correctly.", 6f);
+            phone.Receive("Triangle", L("check Messages. the code is when we eat.", "看信息。密码是我们吃饭的时间。"));
+            PA(L("Good afternoon, Clearview. Lunch begins at twelve-forty. Twelve. Forty.", "下午好，明鉴学院。午餐将于十二点四十分开始。十二。四十。"), 6.5f);
+            PA(L("Please chew each bite thirty-two times. Thank you for eating correctly.", "请将每一口咀嚼三十二次。感谢您正确地进食。"), 6f);
             yield return new WaitForSeconds(1.5f);
             rig.AllowWalk();
-            SetObjective("Read Triangle's message.\nStay in the HALLWAY (safe) and HOLD RIGHT MOUSE.");
-            Thought("Triangle said: after the bell, the stairwell.\nBut the only stairs are " + Rule("behind the kitchen") + ".", 8f);
-            Thought(Rule("One camera. One Lunch Monitor.") + "\nThe hallway is the only place nobody watches.", 8f);
+            SetObjective(L("Read Triangle's message.\nStay in the HALLWAY (safe) and HOLD RIGHT MOUSE.", "读三角发来的信息。\n待在走廊（安全）里，按住鼠标右键。"));
+            Thought(L("Triangle said: after the bell, the stairwell.\nBut the only stairs are ", "三角说：下课后，楼梯间。\n可唯一的楼梯在") + Rule(L("behind the kitchen", "厨房后面")) + L(".", "。"), 8f);
+            Thought(Rule(L("One camera. One Lunch Monitor.", "一台摄像头。一个午餐监管员。")) + L("\nThe hallway is the only place nobody watches.", "\n只有走廊没人盯着。"), 8f);
             yield return WaitIdle();
-            StartCoroutine(Reminder("My phone buzzed. " + Rule("HOLD RIGHT MOUSE") + " - here in the hallway, where it's safe.", () => phone.RaisedOnce || ended, 22f));
+            StartCoroutine(Reminder(L("My phone buzzed. ", "手机震了。") + Rule(L("HOLD RIGHT MOUSE", "按住鼠标右键")) + L(" - here in the hallway, where it's safe.", "——就在走廊，这里安全。"), () => phone.RaisedOnce || ended, 22f));
         }
 
         // ------------------------------------------------------------------ main loop
@@ -142,7 +142,7 @@ namespace PhoneGame
             if (phone.IsExposed && m == PlayerRig.Mode.Walk && !toldRaise)
             {
                 toldRaise = true;
-                Thought("While I look at the phone, " + Rule("I stand still") + ". Anyone looking can see it.", 7f);
+                Thought(L("While I look at the phone, ", "看手机的时候，") + Rule(L("I stand still", "我站着不动")) + L(". Anyone looking can see it.", "。谁看过来都能看见。"), 7f);
             }
 
             UpdateObjective();
@@ -160,12 +160,12 @@ namespace PhoneGame
             if (rig.CurrentMode == PlayerRig.Mode.Seated)
             {
                 if (GameInput.SpaceDown() && !phone.IsExposed) { StandUp(); SetPrompt(null); return; }
-                p = phone.IsExposed ? null : "[Space]  Stand up";
+                p = phone.IsExposed ? null : L("[Space]  Stand up", "[空格]  站起来");
             }
             else if (rig.CurrentMode == PlayerRig.Mode.Walk) p = RaycastInteract();
             if (phone.IsExposed && taskGiven && !delivered && phone.OpenApp == PhoneController.AppMessages && phone.UnreadCount == 0)
-                p = InReach() ? "SIGNAL: STRONG  -  A / D pick \"Hums When Scared\", Left Mouse, then HOLD Left Mouse"
-                              : "SIGNAL: NONE  -  lower the phone and walk closer to the humming girl";
+                p = InReach() ? L("SIGNAL: STRONG  -  A / D pick \"Hums When Scared\", Left Mouse, then HOLD Left Mouse", "信号：强  -  A / D 选\"害怕时会哼歌\"，点鼠标左键，再按住左键发送")
+                              : L("SIGNAL: NONE  -  lower the phone and walk closer to the humming girl", "信号：无  -  放下手机，走近那个哼歌的女孩");
             SetPrompt(p);
         }
 
@@ -192,9 +192,9 @@ namespace PhoneGame
             if (!gotJob && phone.IsUnlocked(PhoneController.AppMessages))
             {
                 gotJob = true;
-                phone.Receive("Triangle", "you made it. don't look for me. they watch who I talk to.");
-                phone.Receive("Triangle", "a job first. someone at the window tables hums when she's scared. listen for her.");
-                phone.Receive("Triangle", "tell her: the stairs are open tonight. this phone only reaches phones close by.");
+                phone.Receive("Triangle", L("you made it. don't look for me. they watch who I talk to.", "你做到了。别来找我。他们盯着我跟谁说话。"));
+                phone.Receive("Triangle", L("a job first. someone at the window tables hums when she's scared. listen for her.", "先办件事。窗边那桌有个女孩，害怕时会哼歌。听声音找她。"));
+                phone.Receive("Triangle", L("tell her: the stairs are open tonight. this phone only reaches phones close by.", "告诉她：今晚楼梯开着。这部手机只能发给附近的手机。"));
             }
             if (gotJob && !taskGiven && phone.UnreadCount == 0)
             {
@@ -205,18 +205,18 @@ namespace PhoneGame
                     header = "Forward to...",
                     options = new[] { "Mom (not mine)", "Don't Reply", "Lent Me An Eraser", "Hums When Scared", "Bus 14" },
                     correct = 3,
-                    sendText = "the stairs are open tonight.",
-                    check = i => InReach() ? null : "No signal. Get closer to her.",
+                    sendText = L("the stairs are open tonight.", "今晚楼梯开着。"),
+                    check = i => InReach() ? null : L("No signal. Get closer to her.", "没有信号。再靠近她一点。"),
                     onDone = i => StartCoroutine(Delivered()),
                     typeSeconds = 3f,
                 });
-                Thought(Rule("Find the one who hums") + " - pink ribbon, window table, far right corner.\nPut the phone DOWN to walk. Pillars block the camera.", 9f);
+                Thought(Rule(L("Find the one who hums", "找到那个哼歌的人")) + L(" - pink ribbon, window table, far right corner.\nPut the phone DOWN to walk. Pillars block the camera.", "——粉色蝴蝶结，靠窗那桌，最右边的角落。\n放下手机才能走。柱子能挡住摄像头。"), 9f);
             }
             if (!enteredDining && In(rig.transform.position, diningZone))
             {
                 enteredDining = true;
                 if (monitor != null && Vector3.Distance(monitor.transform.position, rig.transform.position) < 9f)
-                    Authority("Find a seat. Eat. Smile.", 4f);
+                    Authority(L("Find a seat. Eat. Smile.", "找位子。吃饭。微笑。"), 4f);
             }
         }
 
@@ -232,15 +232,15 @@ namespace PhoneGame
         void UpdateObjective()
         {
             if (winning) return;
-            if (delivered) { SetObjective("Go to the STAFF door (north wall, behind the counters).\nEnter the lane at the FAR RIGHT end of the counters. Move when the corner camera faces the windows."); return; }
+            if (delivered) { SetObjective(L("Go to the STAFF door (north wall, behind the counters).\nEnter the lane at the FAR RIGHT end of the counters. Move when the corner camera faces the windows.", "去员工通道门（北墙，柜台后面）。\n从柜台最右端进入后面的过道。等角落的摄像头转向窗户时再走。")); return; }
             if (taskGiven)
             {
-                if (InReach()) SetObjective("You're close enough.\nHOLD RIGHT MOUSE -> Messages -> send to \"Hums When Scared\".");
-                else SetObjective("Find the girl who HUMS (pink ribbon).\nShe sits alone at the window table in the FAR RIGHT corner. Follow the sound.");
+                if (InReach()) SetObjective(L("You're close enough.\nHOLD RIGHT MOUSE -> Messages -> send to \"Hums When Scared\".", "已经够近了。\n按住右键 -> 信息 -> 发给“害怕时会哼歌”。"));
+                else SetObjective(L("Find the girl who HUMS (pink ribbon).\nShe sits alone at the window table in the FAR RIGHT corner. Follow the sound.", "找到那个哼歌的女孩（粉色蝴蝶结）。\n她一个人坐在最右边角落的靠窗那桌。循着声音走。"));
                 return;
             }
-            if (gotJob) { SetObjective("Keep the phone up and read Triangle's messages."); return; }
-            if (phone.RaisedOnce) SetObjective("Unlock MESSAGES.\nCode = when lunch begins (the PA said it: 12:40 -> 4 digits).");
+            if (gotJob) { SetObjective(L("Keep the phone up and read Triangle's messages.", "别放下手机，读完三角的信息。")); return; }
+            if (phone.RaisedOnce) SetObjective(L("Unlock MESSAGES.\nCode = when lunch begins (the PA said it: 12:40 -> 4 digits).", "解锁\"信息\"。\n密码 = 午餐开始的时间（广播说过：12:40 → 四位数）。"));
         }
 
         void UpdateHumHints()
@@ -255,27 +255,27 @@ namespace PhoneGame
             if (!heardHum && d < 6f && DialogueIdle)
             {
                 heardHum = true;
-                Thought("That humming... the school anthem, off-key.\n" + Rule("It's coming from the window table.") + " Pink ribbon.", 6f);
+                Thought(L("That humming... the school anthem, off-key.\n", "那个哼歌声……是校歌，跑调了。\n") + Rule(L("It's coming from the window table.", "是从靠窗那桌传来的。")) + L(" Pink ribbon.", "粉色蝴蝶结。"), 6f);
             }
             if (!toldInReach && InReach())
             {
                 toldInReach = true;
                 ambient.Play(AudioSynth.Confirm(), 0.3f, 1.5f);
-                Thought(Rule("Close enough - signal!") + "\nHOLD RIGHT MOUSE and send it to \"Hums When Scared\".", 7f, true);
+                Thought(Rule(L("Close enough - signal!", "够近了——发信号！")) + L("\nHOLD RIGHT MOUSE and send it to \"Hums When Scared\".", "\n按住右键，发给“害怕时会哼歌”。"), 7f, true);
             }
             if (taskTime > 50f && !InReach() && DialogueIdle)
             {
                 taskTime = 0f;
-                Thought("Listen. " + Rule("The humming") + " - far right corner, by the south windows.", 6f);
+                Thought(L("Listen. ", "听。") + Rule(L("The humming", "哼歌声")) + L(" - far right corner, by the south windows.", "——最右边的角落，南边窗户旁。"), 6f);
             }
         }
 
         void ListenToHer()
         {
-            if (delivered) { Thought("She mouths: thank you.", 3.5f, true); return; }
-            if (!taskGiven) { Thought("She's humming the school anthem. Off-key, eyes on her tray.\nShe looks scared.", 5f, true); return; }
+            if (delivered) { Thought(L("She mouths: thank you.", "她用口型说：谢谢。"), 3.5f, true); return; }
+            if (!taskGiven) { Thought(L("She's humming the school anthem. Off-key, eyes on her tray.\nShe looks scared.", "她在哼校歌。跑调了，眼睛盯着餐盘。\n她看起来很害怕。"), 5f, true); return; }
             listened = true;
-            Thought("It's her. I can't talk to her - " + Rule("they watch who talks") + ".\nHOLD RIGHT MOUSE and send the message from here.", 7f, true);
+            Thought(L("It's her. I can't talk to her - ", "就是她。我不能跟她说话——") + Rule(L("they watch who talks", "他们盯着谁在说话")) + L(".\nHOLD RIGHT MOUSE and send the message from here.", "。\n按住鼠标右键，就在这里把信息发出去。"), 7f, true);
         }
 
         IEnumerator Delivered()
@@ -284,17 +284,17 @@ namespace PhoneGame
             ambient.Play(AudioSynth.Confirm(), 0.4f);
             yield return new WaitForSeconds(1.5f);
             if (hum != null) hum.StopHumming();
-            phone.Receive("Hums When Scared", "...ok. ok. thank you.");
-            phone.Receive("Hums When Scared", "tell Triangle I'll be there.");
+            phone.Receive("Hums When Scared", L("...ok. ok. thank you.", "……好。好。谢谢你。"));
+            phone.Receive("Hums When Scared", L("tell Triangle I'll be there.", "告诉三角形，我会去的。"));
             yield return new WaitForSeconds(5f);
-            phone.Receive("Triangle", "good. now the STAFF door behind the counters.");
-            phone.Receive("Triangle", "the corner camera looks at the windows every few seconds. that's your moment.");
-            Thought(Rule("Behind the counters, to the STAFF door.") + "\nGo when the camera faces the windows.", 9f);
+            phone.Receive("Triangle", L("good. now the STAFF door behind the counters.", "很好。现在去柜台后面的员工通道门。"));
+            phone.Receive("Triangle", L("the corner camera looks at the windows every few seconds. that's your moment.", "角落的摄像头每隔几秒就会转向窗户。那就是你的机会。"));
+            Thought(Rule(L("Behind the counters, to the STAFF door.", "绕到柜台后面，去员工通道门。")) + L("\nGo when the camera faces the windows.", "\n等摄像头转向窗户再走。"), 9f);
         }
 
         void UseDoor()
         {
-            if (!delivered) { Thought("Not yet. Triangle said: the job first.", 4f, true); return; }
+            if (!delivered) { Thought(L("Not yet. Triangle said: the job first.", "还不行。三角说了：先办事。"), 4f, true); return; }
             if (!winning) StartCoroutine(ThroughStaffDoor());
         }
 
@@ -332,8 +332,8 @@ namespace PhoneGame
             }
             yield return Fade(1f, 0f, 0.6f);
             rig.AllowWalk();
-            SetObjective("Go down the stairs.\nAt the bottom: the door (E).");
-            Thought("The door clicks shut behind me. " + Rule("No camera here.") + "\nStairs. Going down.", 5f, true);
+            SetObjective(L("Go down the stairs.\nAt the bottom: the door (E).", "走下楼梯。\n最底下有一扇门（E）。"));
+            Thought(L("The door clicks shut behind me. ", "门在身后咔哒一声关上了。") + Rule(L("No camera here.", "这里没有摄像头。")) + L("\nStairs. Going down.", "\n楼梯。往下走。"), 5f, true);
         }
 
         void UpdateStairs()
@@ -342,17 +342,17 @@ namespace PhoneGame
             if (!saidPaint && z > 13.5f)
             {
                 saidPaint = true;
-                Thought("Someone painted on the wall, a long time ago:\n" + Rule("WE KEEP THINGS FROM EACH OTHER."), 5.5f);
+                Thought(L("Someone painted on the wall, a long time ago:\n", "很久以前，有人在墙上刷了一行字：\n") + Rule(L("WE KEEP THINGS FROM EACH OTHER.", "我们对彼此有所隐瞒。")), 5.5f);
             }
             if (!saidChalk && z > 14.6f)
             {
                 saidChalk = true;
-                Thought("And in chalk: " + Rule("SEAT 31") + ". '79, '86, '94...\nYear after year. ...And me?", 5.5f);
+                Thought(L("And in chalk: ", "还有粉笔字：") + Rule(L("SEAT 31", "31 号座位")) + L(". '79, '86, '94...\nYear after year. ...And me?", "。'79、'86、'94……\n一年又一年。……那我呢？"), 5.5f);
             }
             if (!saidVoices && z > 16.1f)
             {
                 saidVoices = true;
-                Thought("Voices. Behind that door.\n" + Rule("Nobody is whispering."), 5f, true);
+                Thought(L("Voices. Behind that door.\n", "门后有人声。\n") + Rule(L("Nobody is whispering.", "没有人在小声说话。")), 5f, true);
             }
         }
 
@@ -379,7 +379,7 @@ namespace PhoneGame
                     yield return null;
                 }
             }
-            Thought("Warm light. A lot of people, talking out loud.\nSomeone says my seat number - like a name.", 5f, true);
+            Thought(L("Warm light. A lot of people, talking out loud.\nSomeone says my seat number - like a name.", "暖黄的灯光。很多人，在大声说话。\n有人叫出我的座位号——像在叫一个名字。"), 5f, true);
             yield return new WaitForSeconds(3.5f);
             yield return FinishLevel("stairs", 2.2f);
         }
@@ -403,8 +403,8 @@ namespace PhoneGame
             }
             if (AccumulateDanger(byMonitor || byCamera ? 1f / Mathf.Max(0.05f, noticeSeconds) : 0f))
             {
-                if (byMonitor) Strike("...Was that a phone?");
-                else Strike("A device has been observed in the dining hall.", true);
+                if (byMonitor) Strike(L("...Was that a phone?", "……那是手机吗？"));
+                else Strike(L("A device has been observed in the dining hall.", "食堂内发现一台电子设备。"), true);
             }
         }
 
@@ -415,7 +415,7 @@ namespace PhoneGame
             if (inside && !toldKitchen)
             {
                 toldKitchen = true;
-                Thought("Behind the counters. " + Rule("Keep moving") + " - before it turns back.", 5f, true);
+                Thought(L("Behind the counters. ", "到柜台后面了。") + Rule(L("Keep moving", "别停")) + L(" - before it turns back.", "——趁它还没转回来。"), 5f, true);
             }
             bool seen = false;
             if (inside && kitchenGrace <= 0f)
@@ -428,7 +428,7 @@ namespace PhoneGame
             {
                 kitchenSeen = 0f;
                 kitchenGrace = 2.5f;
-                Strike("Students are reminded that the kitchen is not a destination.", true);
+                Strike(L("Students are reminded that the kitchen is not a destination.", "提醒各位同学：厨房不是目的地。"), true);
                 if (!ended) rig.Teleport(kitchenReturnPoint, kitchenReturnYaw);
             }
         }
@@ -439,7 +439,7 @@ namespace PhoneGame
             if (paTimer <= 0f && DialogueIdle)
             {
                 paTimer = Random.Range(55f, 75f);
-                PA(ambientPA[paIndex % ambientPA.Length], 6.5f);
+                PA(Loc.T(ambientPA[paIndex % ambientPA.Length]), 6.5f);
                 paIndex++;
             }
             if (monitorTalk > 0f) monitorTalk -= Time.deltaTime;
@@ -449,7 +449,7 @@ namespace PhoneGame
                 {
                     monitorTalk = 30f;
                     string[] lines = { "Chew. Thirty-two times.", "Why aren't you eating?", "Eyes forward. Thank you." };
-                    Authority(lines[Random.Range(0, lines.Length)], 4f);
+                    Authority(Loc.T(lines[Random.Range(0, lines.Length)]), 4f);
                 }
             }
         }
@@ -461,7 +461,7 @@ namespace PhoneGame
             phone.allowRaise = false;
             phone.CancelTask();
             rig.Lock();
-            Authority("Device. Now.", 4f, true);
+            Authority(L("Device. Now.", "设备。交出来。"), 4f, true);
             if (monitor != null)
             {
                 Vector3 to = rig.transform.position - monitor.transform.position; to.y = 0f;
@@ -472,7 +472,7 @@ namespace PhoneGame
                 while (!monitor.HasArrived && t < 7f) { t += Time.deltaTime; yield return null; }
             }
             yield return WaitIdle();
-            PA("A device has been retired. Thank you for your cooperation.", 5f);
+            PA(L("A device has been retired. Thank you for your cooperation.", "一台设备已被回收。感谢您的配合。"), 5f);
             yield return WaitIdle();
             yield return Caught("confiscated");
         }

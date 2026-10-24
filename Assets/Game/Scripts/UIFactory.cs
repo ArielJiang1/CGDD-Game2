@@ -11,8 +11,26 @@ namespace PhoneGame
     /// </summary>
     public static class UIFactory
     {
-        static Font font, mono;
-        static bool monoTried;
+        static Font font, mono, cjk;
+        static bool monoTried, cjkTried;
+
+        /// <summary>A Chinese font from the computer (PingFang on a Mac, YaHei on Windows...). Runtime only.</summary>
+        public static Font CjkFont
+        {
+            get
+            {
+                if (cjk == null && !cjkTried)
+                {
+                    cjkTried = true;
+                    try
+                    {
+                        cjk = Font.CreateDynamicFontFromOSFont(new[] { "PingFang SC", "Hiragino Sans GB", "Heiti SC", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Arial Unicode MS" }, 32);
+                    }
+                    catch (System.Exception) { cjk = null; }
+                }
+                return cjk != null ? cjk : DefaultFont;
+            }
+        }
 
         public static Font DefaultFont
         {
@@ -42,7 +60,7 @@ namespace PhoneGame
         }
 
         /// <summary>The font new Text gets: typewriter while playing, built-in while building scenes in the editor.</summary>
-        public static Font TextFont { get { return Application.isPlaying ? MonoFont : DefaultFont; } }
+        public static Font TextFont { get { return Application.isPlaying ? (Loc.Chinese ? CjkFont : MonoFont) : DefaultFont; } }
 
         public static Canvas MakeCanvas(string name, int sortOrder)
         {

@@ -58,6 +58,7 @@ namespace PhoneGame
             "Today's dessert has been cancelled for your safety. Enjoy your safety.",
             "A student has been happy for fourteen consecutive days. Congratulations to everyone.",
             "Please do not look out of the windows. The windows are for light.",
+            "Do not feed the pigeons. Pigeons are loud. Loud things are noticed.",
             "Lunch ends in five minutes. Please finish being nourished.",
         };
         int paIndex;
@@ -115,11 +116,11 @@ namespace PhoneGame
             phone.Receive("Triangle", L("check Messages. the code is when we eat.", "看信息。密码是我们吃饭的时间。"));
             PA(L("Good afternoon, Clearview. Lunch begins at twelve-forty. Twelve. Forty.", "下午好，明鉴学院。午餐将于十二点四十分开始。十二。四十。"), 6.5f);
             PA(L("Please chew each bite thirty-two times. Thank you for eating correctly.", "请将每一口咀嚼三十二次。感谢您正确地进食。"), 6f);
-            yield return new WaitForSeconds(1.5f);
+            yield return Wait(1.5f);
             rig.AllowWalk();
             SetObjective(L("Read Triangle's message.\nStay in the HALLWAY (safe) and HOLD RIGHT MOUSE.", "读三角发来的信息。\n待在走廊（安全）里，按住鼠标右键。"));
             Thought(L("Triangle said: after the bell, the stairwell.\nBut the only stairs are ", "三角说：下课后，楼梯间。\n可唯一的楼梯在") + Rule(L("behind the kitchen", "厨房后面")) + L(".", "。"), 8f);
-            Thought(Rule(L("One camera. One Lunch Monitor.", "一台摄像头。一个午餐监管员。")) + L("\nThe hallway is the only place nobody watches.", "\n只有走廊没人盯着。"), 8f);
+            Thought(Rule(L("One camera. One Lunch Monitor.", "一台摄像头。一个午餐监督员。")) + L("\nThe hallway is the only place nobody watches.", "\n只有走廊没人盯着。"), 8f);
             yield return WaitIdle();
             StartCoroutine(Reminder(L("My phone buzzed. ", "手机震了。") + Rule(L("HOLD RIGHT MOUSE", "按住鼠标右键")) + L(" - here in the hallway, where it's safe.", "——就在走廊，这里安全。"), () => phone.RaisedOnce || ended, 22f));
         }
@@ -282,11 +283,11 @@ namespace PhoneGame
         {
             delivered = true;
             ambient.Play(AudioSynth.Confirm(), 0.4f);
-            yield return new WaitForSeconds(1.5f);
+            yield return Wait(1.5f);
             if (hum != null) hum.StopHumming();
             phone.Receive("Hums When Scared", L("...ok. ok. thank you.", "……好。好。谢谢你。"));
-            phone.Receive("Hums When Scared", L("tell Triangle I'll be there.", "告诉三角形，我会去的。"));
-            yield return new WaitForSeconds(5f);
+            phone.Receive("Hums When Scared", L("tell Triangle I'll be there.", "告诉三角，我会去的。"));
+            yield return Wait(5f);
             phone.Receive("Triangle", L("good. now the STAFF door behind the counters.", "很好。现在去柜台后面的员工通道门。"));
             phone.Receive("Triangle", L("the corner camera looks at the windows every few seconds. that's your moment.", "角落的摄像头每隔几秒就会转向窗户。那就是你的机会。"));
             Thought(Rule(L("Behind the counters, to the STAFF door.", "绕到柜台后面，去员工通道门。")) + L("\nGo when the camera faces the windows.", "\n等摄像头转向窗户再走。"), 9f);
@@ -342,7 +343,7 @@ namespace PhoneGame
             if (!saidPaint && z > 13.5f)
             {
                 saidPaint = true;
-                Thought(L("Someone painted on the wall, a long time ago:\n", "很久以前，有人在墙上刷了一行字：\n") + Rule(L("WE KEEP THINGS FROM EACH OTHER.", "我们对彼此有所隐瞒。")), 5.5f);
+                Thought(L("Someone painted on the wall, a long time ago:\n", "很久以前，有人在墙上刷了一行字：\n") + Rule(L("WE KEEP THINGS FROM EACH OTHER.", "我们彼此之间有秘密。")), 5.5f);
             }
             if (!saidChalk && z > 14.6f)
             {
@@ -380,7 +381,7 @@ namespace PhoneGame
                 }
             }
             Thought(L("Warm light. A lot of people, talking out loud.\nSomeone says my seat number - like a name.", "暖黄的灯光。很多人，在大声说话。\n有人叫出我的座位号——像在叫一个名字。"), 5f, true);
-            yield return new WaitForSeconds(3.5f);
+            yield return Wait(3.5f);
             yield return FinishLevel("stairs", 2.2f);
         }
 
@@ -435,7 +436,7 @@ namespace PhoneGame
 
         void UpdateAmbientLines()
         {
-            paTimer -= Time.deltaTime;
+            paTimer -= GameSpeed.Dt;
             if (paTimer <= 0f && DialogueIdle)
             {
                 paTimer = Random.Range(55f, 75f);
@@ -468,7 +469,7 @@ namespace PhoneGame
                 Vector3 stand = rig.transform.position - to.normalized * 0.9f;
                 monitor.Approach(stand, rig.transform);
                 float t = 0f;
-                yield return new WaitForSeconds(0.4f);
+                yield return Wait(0.4f);
                 while (!monitor.HasArrived && t < 7f) { t += Time.deltaTime; yield return null; }
             }
             yield return WaitIdle();

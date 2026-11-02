@@ -79,7 +79,7 @@ namespace PhoneGame
             Button chapters = UIFactory.MakeButton("Chapters", root, Loc.L("Chapters", "章节"), 0f, y, 420f, 74f);
             chapters.onClick.AddListener(() => chapterPanel.SetActive(true));
             y -= 88f;
-            Button quit = UIFactory.MakeButton(Loc.L("Quit", "退出"), root, "Quit", 0f, y, 420f, 74f);
+            Button quit = UIFactory.MakeButton("Quit", root, Loc.L("Quit", "退出"), 0f, y, 420f, 74f);
             quit.onClick.AddListener(Quit);
 
             UIFactory.AddText(UIFactory.Rect("Credits", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(1600f, 34f)),
@@ -104,10 +104,17 @@ namespace PhoneGame
             stamp.raycastTarget = false;
 
             // language: English / 中文 (saved; the title reloads so every text and font switches)
-            Button lang = UIFactory.MakeButton("Language", root, Loc.Chinese ? "语言：中文   >   English" : "Language: English   >   中文", 0f, y - 96f, 520f, 60f);
+            Button lang = UIFactory.MakeButton("Language", root, Loc.Chinese ? "语言：中文   >   English" : "Language: English   >   中文", -235f, y - 96f, 450f, 60f);
             Text langText = lang.GetComponentInChildren<Text>();
             if (langText != null) { langText.font = UIFactory.CjkFont; langText.fontSize = 24; }
             lang.onClick.AddListener(() => { Loc.Chinese = !Loc.Chinese; UnityEngine.SceneManagement.SceneManager.LoadScene(GameFlow.TitleScene); });
+            // story speed: 1x / 2x (dialogue, messages, loading, scripted waits)
+            Button speed = UIFactory.MakeButton("Speed", root, "", 235f, y - 96f, 450f, 60f);
+            Text speedLabel = speed.GetComponentInChildren<Text>();
+            System.Action showSpeed = () => { if (speedLabel != null) speedLabel.text = GameSpeed.Fast ? Loc.L("Story speed: 2x   >   1x", "剧情速度：2 倍   >   1 倍") : Loc.L("Story speed: 1x   >   2x", "剧情速度：1 倍   >   2 倍"); };
+            if (speedLabel != null) speedLabel.fontSize = 24;
+            showSpeed();
+            speed.onClick.AddListener(() => { GameSpeed.Fast = !GameSpeed.Fast; showSpeed(); });
 
             BuildNamePanel(root);
             BuildChapterPanel(root);
@@ -170,10 +177,10 @@ namespace PhoneGame
             for (int i = 0; i < GameFlow.Levels.Length; i++)
             {
                 int idx = i;
-                Button b = UIFactory.MakeButton("Chapter" + i, panel, Loc.T(GameFlow.LevelTitles[i]), 0f, 170f - i * 100f, 640f, 80f);
+                Button b = UIFactory.MakeButton("Chapter" + i, panel, Loc.T(GameFlow.LevelTitles[i]), 0f, 215f - i * 80f, 640f, 66f);
                 b.onClick.AddListener(() => GameFlow.LoadLevel(idx));
             }
-            Button back = UIFactory.MakeButton(Loc.L("Back", "返回"), panel, "Back", 0f, -290f, 300f, 74f);
+            Button back = UIFactory.MakeButton("Back", panel, Loc.L("Back", "返回"), 0f, -300f, 300f, 66f);
             back.onClick.AddListener(() => chapterPanel.SetActive(false));
             chapterPanel = panel.gameObject;
             chapterPanel.SetActive(false);

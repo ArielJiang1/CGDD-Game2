@@ -1,5 +1,5 @@
 // @role Shared chapter rules: one subtitle at a time, danger meter, 3 hidden warnings, objective panel, prompts, chapter cards
-// @calls PlayerRig, PhoneController, DangerFX, AmbientAudio, AudioSynth, Interactable, GameFlow
+// @calls PlayerRig, PhoneController, DangerFX, AmbientAudio, AudioSynth, Interactable, GameFlow, GameSpeed, Readable, PosterEgg
 // @tune chances:int:1-5:warnings before the phone is taken (never shown as a number)
 // @tune noticeSeconds:float:0.5-6:seconds a watcher must see the phone before a warning
 // @tune dangerDecayPerSecond:float:0.1-1:how fast danger drains once nobody is looking
@@ -46,6 +46,10 @@ namespace PhoneGame
         public float typeCharsPerSecond = 55f;
         public bool voiceBlips = true;
 
+        [Header("Reading posters (walk up and look at them)")]
+        [Tooltip("Seconds the crosshair must rest on a poster before you read it.")]
+        public float readSeconds = 0.6f;
+
         protected enum Who { Authority, Student, Thought, PA }
         protected class Line { public Who who; public string speaker; public string text; public float seconds; public float gap; }
 
@@ -59,6 +63,12 @@ namespace PhoneGame
         protected float authorityPitch = 0.8f;
         protected string Name { get { return Loc.Chinese && GameFlow.playerName == "Student" ? "同学" : GameFlow.playerName; } }
 
+        Readable[] readables;
+        Readable reading;
+        float readT;
+        /// <summary>How many posters / signs the player has read in this chapter.</summary>
+        protected int postersRead;
+
         readonly Queue<Line> queue = new Queue<Line>();
         Line current;
         float currentLeft, gapLeft, reveal;
@@ -70,7 +80,7 @@ namespace PhoneGame
         protected Text speechText, speechWho, thoughtText, prompt, caption, questionText, questionStatus;
         protected GameObject questionBox, speechBox, thoughtBox, promptBox;
         Image speechBg, speechAccent, paStripe;
-        Text warningText;
+        Text warningText, speedText;
         float warningT;
         GameObject chapterRoot;
         Text chapterLabelText, chapterTitleText, chapterTimeText, chapterSloganText;
@@ -103,6 +113,8 @@ namespace PhoneGame
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
             if (navSurface != null) navSurface.BuildNavMesh();
+            readables = FindObjectsByType<Readable>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            PosterEgg.InstallAll();   // posters that change when you come close (works on scenes built before an entry was added)
         }
 
         protected virtual void Update()
@@ -110,6 +122,8 @@ namespace PhoneGame
             if (GameInput.EscDown()) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
             if (GameInput.LeftDown() && Cursor.lockState != CursorLockMode.Locked) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
             if (GameInput.SkipDown() && !ended) { StopAllCoroutines(); StartCoroutine(FinishLevel("skip", 0.4f)); }
+            if (GameInput.SpeedDown()) { GameSpeed.Fast = !GameSpeed.Fast; ambient.Play(AudioSynth.Tick(), 0.3f, GameSpeed.Fast ? 1.5f : 0.9f); }
+            if (speedText != null) speedText.text = GameSpeed.Fast ? L("2x  (Tab)", "2 倍速（Tab）") : L("1x  (Tab: 2x)", "1 倍速（Tab：2 倍）");
             TickDialogue();
             TickHUD();
             PlacePrompt();
@@ -122,6 +136,7 @@ namespace PhoneGame
                 dangerFx.level = 0f;
                 return;
             }
+            UpdateReading();
             LevelUpdate();
             ambient.dangerLevel = danger;
             dangerFx.level = danger;
@@ -208,8 +223,16 @@ namespace PhoneGame
                 speechText.color = SpeechInk;
                 speechText.text = "";
                 if (pa) ambient.Play(AudioSynth.Chime(), 0.35f);
+                // the box grows with the line (Chinese and long lines wrap instead of running out of the box)
+                RectTransform sb = (RectTransform)speechBox.transform;
+                sb.sizeDelta = new Vector2(sb.sizeDelta.x, Mathf.Max(118f, UIFactory.PreferredHeight(speechText, currentFull) + 56f));
             }
-            else thoughtText.text = "";
+            else
+            {
+                thoughtText.text = "";
+                RectTransform tb = (RectTransform)thoughtBox.transform;
+                tb.sizeDelta = new Vector2(tb.sizeDelta.x, Mathf.Max(160f, UIFactory.PreferredHeight(thoughtText, currentFull) + 36f));
+            }
         }
 
         protected void ClearLine()
@@ -229,7 +252,7 @@ namespace PhoneGame
                 {
                     // PA lines wait for the chime before they start typing
                     float delay = current.who == Who.PA ? 0.6f : 0f;
-                    reveal += Time.deltaTime * typeCharsPerSecond;
+                    reveal += GameSpeed.Dt * typeCharsPerSecond;
                     int shown = Mathf.Clamp(Mathf.FloorToInt(reveal - delay * typeCharsPerSecond), 0, total);
                     if (shown != revealedShown)
                     {
@@ -239,11 +262,11 @@ namespace PhoneGame
                         if (current.who == Who.Thought) thoughtText.text = s; else speechText.text = s;
                     }
                 }
-                currentLeft -= Time.deltaTime;
+                currentLeft -= GameSpeed.Dt;
                 if (currentLeft <= 0f) ClearLine();
                 return;
             }
-            if (gapLeft > 0f) { gapLeft -= Time.deltaTime; return; }
+            if (gapLeft > 0f) { gapLeft -= GameSpeed.Dt; return; }
             if (queue.Count > 0) Show(queue.Dequeue());
         }
 
@@ -278,15 +301,87 @@ namespace PhoneGame
                 if (ended || done()) yield break;
                 Thought(text);
                 float t = 0f;
-                while (t < every && !done()) { t += Time.deltaTime; yield return null; }
+                while (t < every && !done()) { t += GameSpeed.Dt; yield return null; }
             }
         }
 
         /// <summary>Rules in the player's thoughts are highlighted so they stand out.</summary>
         protected static string Rule(string s) { return "<b><color=#ff9a6e>" + s + "</color></b>"; }
 
+        /// <summary>A scripted pause, at story speed (2x halves it).</summary>
+        protected static WaitForSeconds Wait(float seconds) { return new WaitForSeconds(seconds / GameSpeed.Factor); }
+
         /// <summary>English / Chinese pair, picked by the language setting (Loc).</summary>
         protected static string L(string en, string zh) { return Loc.L(en, zh); }
+
+        // ------------------------------------------------------------------ reading posters
+        /// <summary>
+        /// Every poster, sign and label in the school is there to be read. Walk up to one (or, sitting, look at it
+        /// for a moment) and the player reads it: a thought, a Search word, or the poster answering back.
+        /// </summary>
+        void UpdateReading()
+        {
+            if (readables == null || readables.Length == 0 || rig == null || rig.eye == null) return;
+            PlayerRig.Mode m = rig.CurrentMode;
+            bool seated = m == PlayerRig.Mode.Seated;
+            bool canRead = (m == PlayerRig.Mode.Walk || seated) && (phone == null || !phone.IsExposed);
+            Readable best = null;
+            if (canRead)
+            {
+                float bestA = 999f;
+                Vector3 eye = rig.eye.position, fwd = rig.eye.forward;
+                foreach (Readable r in readables)
+                {
+                    if (r == null || r.read || !r.isActiveAndEnabled) continue;
+                    Vector3 to = r.Centre - eye;
+                    float d = to.magnitude;
+                    float range = seated ? Mathf.Min(11f, r.Range * 3.6f) : r.Range;
+                    if (d > range || d < 0.05f) continue;
+                    if (Vector3.Dot(r.transform.forward, to) < 0f) continue;   // looking at the back of it
+                    float a = Vector3.Angle(fwd, to);
+                    float allow = Mathf.Max(6f, Mathf.Atan2(r.Radius * 0.8f, d) * Mathf.Rad2Deg);
+                    if (a > allow || a >= bestA) continue;
+                    if (ReadBlocked(eye, r)) continue;
+                    best = r;
+                    bestA = a;
+                }
+            }
+            if (best != reading) { reading = best; readT = 0f; }
+            if (reading == null) return;
+            readT += Time.deltaTime;
+            if (readT < readSeconds) return;
+            Readable done = reading;
+            reading = null;
+            done.read = true;
+            OnRead(done);
+        }
+
+        bool ReadBlocked(Vector3 eye, Readable r)
+        {
+            Vector3 to = r.Centre - eye;
+            float d = to.magnitude;
+            foreach (RaycastHit h in Physics.RaycastAll(eye, to / d, Mathf.Max(0f, d - 0.1f), ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (h.transform.IsChildOf(rig.transform) || h.transform.IsChildOf(r.transform)) continue;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>A poster was read. Chapters can add their own reactions (call base).</summary>
+        protected virtual void OnRead(Readable r)
+        {
+            postersRead++;
+            if (r.Reacts)
+            {
+                r.React();
+                ambient.Play(AudioSynth.Glitch(), 0.22f);
+            }
+            string say = string.IsNullOrEmpty(r.reaction) ? "" : Loc.T(r.reaction);
+            if (!string.IsNullOrEmpty(r.keyword) && phone != null && phone.AddSearchWord(r.keyword))
+                say += (say.Length > 0 ? "\n" : "") + Rule(L("Search word noted: ", "记下搜索词：") + Loc.T(r.keyword));
+            if (say.Length > 0) Thought(say, Mathf.Clamp(3f + RichText.VisibleLength(say) / 20f, 4f, 9f));
+        }
 
         // ------------------------------------------------------------------ interaction
         /// <summary>Raycast from the eye; returns the prompt to show (or null) and uses the thing on [E].</summary>
@@ -425,7 +520,7 @@ namespace PhoneGame
             yield return TypeInto(chapterTimeText, Loc.T(time), 30f);
             chapterSloganText.text = Loc.L("CLEARVIEW ACADEMY  -  WHAT IS SEEN, IS SAFE.", "明鉴学院  -  被看见的，就是安全的。");
             float t = 0f;
-            while (t < hold && !GameInput.AnyKeyDown()) { t += Time.deltaTime; yield return null; }
+            while (t < hold && !GameInput.AnyKeyDown()) { t += GameSpeed.Dt; yield return null; }
             chapterRoot.SetActive(false);
             yield return Fade(1f, 0f, 1.2f);
         }
@@ -437,7 +532,7 @@ namespace PhoneGame
                 t.text = s.Substring(0, i);
                 if (char.IsLetterOrDigit(s[i - 1])) ambient.Play(AudioSynth.Tick(), 0.12f, Random.Range(0.9f, 1.1f));
                 float w = 1f / cps;
-                while (w > 0f) { w -= Time.deltaTime; yield return null; }
+                while (w > 0f) { w -= GameSpeed.Dt; yield return null; }
             }
         }
 
@@ -484,6 +579,7 @@ namespace PhoneGame
         protected void ShowQuestion(string text)
         {
             questionText.text = text;
+            UIFactory.FitFont(questionText, text, 16);
             questionStatus.text = "";
             questionTimer.rectTransform.anchorMax = Vector2.one;
             questionBox.SetActive(true);
@@ -585,6 +681,9 @@ namespace PhoneGame
             questionTimer = UIFactory.AddImage(UIFactory.Rect("Timer", tbar, Vector2.zero, Vector2.one, new Vector2(0f, 0.5f), Vector2.zero, Vector2.zero), new Color(1f, 0.4f, 0.3f));
             questionBox = qb.gameObject;
             questionBox.SetActive(false);
+
+            // story speed, top right corner
+            speedText = UIFactory.AddText(UIFactory.Rect("Speed", root, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24f, -14f), new Vector2(320f, 26f)), "", 17, new Color(1f, 1f, 1f, 0.55f), TextAnchor.UpperRight);
 
             fade = UIFactory.AddImage(UIFactory.Stretch("Fade", root), Color.black);
             caption = UIFactory.AddText(UIFactory.Centered("Caption", root, 0f, 0f, 1400f, 100f), "", 40, new Color(0.9f, 0.9f, 0.9f), TextAnchor.MiddleCenter);

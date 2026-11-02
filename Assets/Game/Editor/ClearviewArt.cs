@@ -416,13 +416,13 @@ namespace PhoneGame
                 case "Wall_Window_2m":
                     Box("Sill", r, new Vector3(1f, 1.0f, 0f), new Vector3(1.3f, 0.04f, 0.28f), Frame);
                     Box("Mullion_V", r, new Vector3(1f, 1.6f, 0f), new Vector3(0.04f, 1.2f, 0.05f), Frame);
-                    Box("Mullion_H", r, new Vector3(1f, 1.6f, 0f), new Vector3(1.2f, 0.04f, 0.05f), Frame);
+                    Box("Mullion_H", r, new Vector3(1f, 1.6f, 0f), new Vector3(1.2f, 0.04f, 0.046f), Frame);
                     Box("Frame_Top", r, new Vector3(1f, 2.2f, 0f), new Vector3(1.24f, 0.05f, 0.22f), Frame);
                     break;
                 case "Wall_Door_2m":
                     Box("Jamb_L", r, new Vector3(0.375f, 1.25f, 0f), new Vector3(0.06f, 2.5f, 0.24f), Frame);
                     Box("Jamb_R", r, new Vector3(1.625f, 1.25f, 0f), new Vector3(0.06f, 2.5f, 0.24f), Frame);
-                    Box("Head", r, new Vector3(1f, 2.5f, 0f), new Vector3(1.31f, 0.06f, 0.24f), Frame);
+                    Box("Head", r, new Vector3(1f, 2.5f, 0f), new Vector3(1.31f, 0.06f, 0.25f), Frame);
                     break;
                 case "Watcher_SecurityCamera":
                     GameObject led = Box("LED", r, new Vector3(0.09f, 2.88f, 0.36f), new Vector3(0.025f, 0.025f, 0.025f), RedLED);
@@ -502,17 +502,102 @@ namespace PhoneGame
             Box("Bow_Knot", parent, p + new Vector3(0f, 0f, size * 0.05f), new Vector3(size * 0.35f, size * 0.5f, size * 0.45f), m);
         }
 
-        /// <summary>Face details on a block head: ears, brows, a nose, a thin mouth. The dark eye band stays as it is.</summary>
-        static void Face(Transform l, Vector3 c, float half, float front, Material hair)
+        /// <summary>Lip colours (girls rose, boys skin-toned).</summary>
+        static Material lipsGirl, lipsBoy;
+        static Material LipMat(bool girl)
+        {
+            if (girl) { if (lipsGirl == null) lipsGirl = Mat("M_CV_Lips_Girl", new Color(0.82f, 0.36f, 0.42f), null, Vector2.one, 0.4f); return lipsGirl; }
+            if (lipsBoy == null) lipsBoy = Mat("M_CV_Lips_Boy", new Color(0.66f, 0.42f, 0.4f), null, Vector2.one, 0.3f);
+            return lipsBoy;
+        }
+
+        /// <summary>
+        /// Face details on a block head: two big plain dot eyes, brows, ears, a nose, the mouth - no dark band across the
+        /// face any more (on the standing figures it sat low and read as a moustache). Girls: rose lips, blush, lashes,
+        /// a small nose. Boys: a thin skin-toned mouth. No part casts a shadow on the face. eyeY = eye height (figure space).
+        /// </summary>
+        static void Face(Transform l, Vector3 c, float half, float front, Material hair, bool girl, float eyeY, bool dazed = false)
         {
             Box("Face", l, c, new Vector3(half * 2f, half * 2f, front * 2f - 0.005f), Skin);
             foreach (int sgn in new[] { -1, 1 })
             {
+                // students look a little dazed: eyes set wide apart, brows raised high, a tiny mouth
+                float ex = sgn * half * (dazed ? 0.44f : 0.36f);
+                // big plain dots: a little blank, a little dazed - very Clearview
+                Box("Eye", l, new Vector3(ex, eyeY, front + 0.003f), girl ? new Vector3(0.03f, 0.052f, 0.006f) : new Vector3(0.027f, 0.048f, 0.006f), Black);   // tall, narrow
                 Box("Ear", l, c + new Vector3(sgn * (half + 0.01f), -0.01f, -0.01f), new Vector3(0.022f, 0.06f, 0.05f), Skin);
-                Box("Brow", l, c + new Vector3(sgn * half * 0.36f, half * 0.34f, front + 0.004f), new Vector3(half * 0.5f, 0.012f, 0.01f), hair);
+                Box("Brow", l, new Vector3(ex, eyeY + (dazed ? 0.072f : 0.054f), front + 0.004f), new Vector3(half * (dazed ? 0.3f : 0.42f), girl ? 0.008f : 0.011f, 0.008f), hair);
+                if (girl)
+                {
+                    Box("Lash", l, new Vector3(ex + sgn * 0.02f, eyeY + 0.026f, front + 0.004f), new Vector3(0.018f, 0.006f, 0.005f), Black, false, new Vector3(0f, 0f, sgn * 25f));
+                    Box("Blush", l, new Vector3(sgn * half * 0.6f, eyeY - 0.042f, front + 0.002f), new Vector3(0.034f, 0.016f, 0.004f), BlushMat());
+                }
             }
-            Box("Nose", l, c + new Vector3(0f, -half * 0.38f, front + 0.008f), new Vector3(0.03f, 0.04f, 0.02f), NoseMat());
-            Box("Mouth", l, c + new Vector3(0f, -half * 0.68f, front + 0.003f), new Vector3(half * 0.45f, 0.008f, 0.008f), EyeBand);
+            GameObject nose = girl
+                ? Box("Nose", l, new Vector3(0f, eyeY - 0.04f, front + 0.005f), new Vector3(0.018f, 0.022f, 0.01f), Skin)
+                : Box("Nose", l, new Vector3(0f, eyeY - 0.04f, front + 0.007f), new Vector3(0.026f, 0.034f, 0.014f), NoseMat());
+            nose.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            float mw = dazed ? 0.16f : (girl ? 0.34f : 0.38f);
+            if (girl) Box("Mouth", l, new Vector3(0f, eyeY - 0.085f, front + 0.003f), new Vector3(half * mw, 0.013f, 0.008f), LipMat(true));
+            else Box("Mouth", l, new Vector3(0f, eyeY - 0.086f, front + 0.003f), new Vector3(half * mw, dazed ? 0.012f : 0.007f, 0.006f), LipMat(false));
+        }
+
+        /// <summary>
+        /// Instructor Voss: the only full beard in the school (jaw, chin and moustache), so he is recognisable at a glance -
+        /// and on the posters that turn into him. Call after Standing().
+        /// </summary>
+        public static void VossBeard(Transform fig)
+        {
+            Transform l = fig.Find("Chibi");
+            if (l == null) l = fig;
+            Material beard = Mat("M_CV_Beard", new Color(0.2f, 0.15f, 0.12f), null, Vector2.one, 0.15f);
+            Box("Beard_Chin", l, new Vector3(0f, 1.54f, 0.055f), new Vector3(0.302f, 0.07f, 0.2f), beard);
+            foreach (int sgn in new[] { -1, 1 })
+            {
+                Box("Beard_Jaw", l, new Vector3(sgn * 0.152f, 1.585f, 0.075f), new Vector3(0.022f, 0.11f, 0.11f), beard);
+                Box("Beard_Cheek", l, new Vector3(sgn * 0.095f, 1.585f, 0.149f), new Vector3(0.075f, 0.05f, 0.01f), beard);
+            }
+            Box("Moustache", l, new Vector3(0f, 1.608f, 0.151f), new Vector3(0.1f, 0.017f, 0.01f), beard);
+        }
+
+        /// <summary>
+        /// The player's own body - seen only in mirrors (layer 30, which the player's camera does not render).
+        /// Deliberately neutral: a straight bob, the uniform, trousers. Nobody in particular. Anybody in seat 31.
+        /// </summary>
+        public static Transform NeutralBody(Transform rig)
+        {
+            Transform l = Group("MirrorBody (layer 30: mirrors only)", rig);
+            Material hair = Hair;
+            Face(l, new Vector3(0f, 1.47f, 0f), 0.13f, 0.13f, hair, false, 1.49f, true);
+            Box("Hair", l, new Vector3(0f, 1.615f, -0.01f), new Vector3(0.275f, 0.05f, 0.27f), hair);
+            Box("Bangs", l, new Vector3(0f, 1.575f, 0.12f), new Vector3(0.262f, 0.05f, 0.03f), hair);
+            Box("HairBack", l, new Vector3(0f, 1.47f, -0.13f), new Vector3(0.275f, 0.3f, 0.03f), hair);
+            foreach (int sgn in new[] { -1, 1 })
+            {
+                Box("HairSide", l, new Vector3(sgn * 0.14f, 1.47f, -0.03f), new Vector3(0.025f, 0.22f, 0.2f), hair);
+                Box("Arm", l, new Vector3(sgn * 0.25f, 1.02f, 0f), new Vector3(0.08f, 0.5f, 0.12f), Uniform);
+                Box("Hand", l, new Vector3(sgn * 0.25f, 0.73f, 0f), new Vector3(0.06f, 0.09f, 0.08f), Skin);
+            }
+            Box("Neck", l, new Vector3(0f, 1.31f, 0f), new Vector3(0.09f, 0.08f, 0.09f), Skin);
+            Box("Torso", l, new Vector3(0f, 1.03f, 0f), new Vector3(0.42f, 0.52f, 0.24f), Uniform);
+            Box("Collar", l, new Vector3(0f, 1.295f, 0f), new Vector3(0.16f, 0.03f, 0.15f), Pillow);
+            Box("Badge", l, new Vector3(0.11f, 1.18f, 0.122f), new Vector3(0.06f, 0.04f, 0.01f), FadedYellowMat());
+            Box("Trousers", l, new Vector3(0f, 0.42f, 0f), new Vector3(0.4f, 0.8f, 0.24f), TrouserMat());
+            Box("Shoes", l, new Vector3(0f, 0.04f, 0.04f), new Vector3(0.42f, 0.08f, 0.3f), Black);
+            foreach (Renderer r in l.GetComponentsInChildren<Renderer>(true))
+            {
+                r.gameObject.layer = 30;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            l.gameObject.layer = 30;
+            return l;
+        }
+
+        /// <summary>The white-box eye band is replaced by real eyes on the face.</summary>
+        static void HideEyeBand(Transform fig)
+        {
+            foreach (Transform c in fig.GetComponentsInChildren<Transform>(true))
+                if (c.name == "Eyes" || c.name == "EyeBand") { Renderer r = c.GetComponent<Renderer>(); if (r != null) r.enabled = false; }
         }
 
         /// <summary>
@@ -552,9 +637,9 @@ namespace PhoneGame
                 Box("Torso", l, new Vector3(0f, 0.775f, -0.04f), new Vector3(0.4f, 0.65f, 0.24f), Uniform);
                 Box("Thighs", l, new Vector3(0f, 0.525f, 0.25f), new Vector3(0.4f, 0.15f, 0.34f), Uniform);
                 Box("Shins", l, new Vector3(0f, 0.225f, 0.36f), new Vector3(0.4f, 0.45f, 0.12f), Uniform);
-                Box("EyeBand", l, new Vector3(0f, 1.25f, 0.135f), new Vector3(0.18f, 0.05f, 0.03f), EyeBand);
             }
-            Face(l, new Vector3(0f, 1.25f, 0.005f), 0.135f, 0.1225f, hair);
+            Face(l, new Vector3(0f, 1.25f, 0.005f), 0.135f, 0.1225f, hair, girl, 1.27f, true);
+            HideEyeBand(fig);
             Collar(l, 1.10f, 0.08f, 1.12f, 1.075f);
             Box("Shirt", l, new Vector3(0f, 0.97f, 0.083f), new Vector3(0.12f, 0.2f, 0.008f), Pillow);
             foreach (int sgn in new[] { -1, 1 })
@@ -573,15 +658,16 @@ namespace PhoneGame
                 if (style == 0)
                 {
                     Box("HairBack", l, new Vector3(0f, 1.15f, -0.135f), new Vector3(0.29f, 0.5f, 0.05f), hair);
-                    Box("HairSide_L", l, new Vector3(-0.15f, 1.19f, -0.01f), new Vector3(0.03f, 0.38f, 0.22f), hair);
-                    Box("HairSide_R", l, new Vector3(0.15f, 1.19f, -0.01f), new Vector3(0.03f, 0.38f, 0.22f), hair);
+                    // long hair falls BEHIND the ears and over the shoulders - nothing along the jaw
+                    Box("HairSide_L", l, new Vector3(-0.15f, 1.2f, -0.075f), new Vector3(0.03f, 0.4f, 0.12f), hair);
+                    Box("HairSide_R", l, new Vector3(0.15f, 1.2f, -0.075f), new Vector3(0.03f, 0.4f, 0.12f), hair);
                 }
                 else if (style == 1)
                 {
                     // bob
                     Box("HairBack", l, new Vector3(0f, 1.25f, -0.135f), new Vector3(0.3f, 0.3f, 0.05f), hair);
-                    Box("HairSide_L", l, new Vector3(-0.15f, 1.25f, -0.01f), new Vector3(0.03f, 0.26f, 0.24f), hair);
-                    Box("HairSide_R", l, new Vector3(0.15f, 1.25f, -0.01f), new Vector3(0.03f, 0.26f, 0.24f), hair);
+                    Box("HairSide_L", l, new Vector3(-0.15f, 1.29f, -0.03f), new Vector3(0.03f, 0.19f, 0.2f), hair);
+                    Box("HairSide_R", l, new Vector3(0.15f, 1.29f, -0.03f), new Vector3(0.03f, 0.19f, 0.2f), hair);
                     Box("Clip", l, new Vector3(0.1f, 1.33f, 0.135f), new Vector3(0.05f, 0.015f, 0.01f), Pastels[v % Pastels.Length]);
                 }
                 else
@@ -602,7 +688,8 @@ namespace PhoneGame
             else
             {
                 Box("Hair", l, new Vector3(0f, 1.375f, -0.015f), new Vector3(0.285f, 0.06f, 0.27f), hair);
-                Box("Fringe", l, new Vector3(0.03f, 1.345f, 0.128f), new Vector3(0.22f, 0.04f, 0.02f), hair);
+                // the side-swept fringe runs up into the top hair (no gap between them)
+                Box("Fringe", l, new Vector3(0.03f, 1.3625f, 0.1225f), new Vector3(0.22f, 0.075f, 0.035f), hair);
                 Box("HairBack", l, new Vector3(0f, 1.3f, -0.12f), new Vector3(0.285f, 0.14f, 0.04f), hair);
                 Box("Sideburn_L", l, new Vector3(-0.142f, 1.3f, 0.02f), new Vector3(0.02f, 0.1f, 0.1f), hair);
                 Box("Sideburn_R", l, new Vector3(0.142f, 1.3f, 0.02f), new Vector3(0.02f, 0.1f, 0.1f), hair);
@@ -617,14 +704,15 @@ namespace PhoneGame
         /// A standing adult on the white-box block body (teacher, monitor, warden), with face details, arms, hands,
         /// a shirt front and shoes. Women: bun + skirt + dark stockings. Men: short hair + tie.
         /// </summary>
-        public static void Standing(Transform fig, bool cap, bool female = false)
+        public static void Standing(Transform fig, bool cap, bool female = false, bool young = false)
         {
             int v = Variant(fig) + (female ? 1 : 0);
             Material hair = HairMat(v);
             Renderer bodyR = fig.Find("Body") != null ? fig.Find("Body").GetComponent<Renderer>() : null;
             Material suit = bodyR != null && bodyR.sharedMaterial != null ? bodyR.sharedMaterial : Authority;
             Transform l = NewLook(fig);
-            Face(l, new Vector3(0f, 1.66f, 0f), 0.145f, 0.145f, hair);
+            Face(l, new Vector3(0f, 1.66f, 0f), 0.145f, 0.145f, hair, female, 1.68f, young);
+            HideEyeBand(fig);
             if (cap)
             {
                 Box("Cap", l, new Vector3(0f, 1.82f, -0.01f), new Vector3(0.31f, 0.08f, 0.31f), Warden);
@@ -635,7 +723,8 @@ namespace PhoneGame
             {
                 Box("Hair", l, new Vector3(0f, 1.8f, -0.01f), new Vector3(0.305f, 0.05f, 0.3f), hair);
                 Box("HairBack", l, new Vector3(0f, female ? 1.66f : 1.72f, -0.15f), new Vector3(0.305f, female ? 0.28f : 0.16f, 0.03f), hair);
-                Box("Fringe", l, new Vector3(female ? 0f : 0.03f, 1.77f, 0.152f), new Vector3(female ? 0.29f : 0.22f, 0.04f, 0.02f), hair);
+                // the fringe runs up into the top hair (no gap between them)
+                Box("Fringe", l, new Vector3(female ? 0f : 0.03f, 1.785f, 0.1435f), new Vector3(female ? 0.29f : 0.22f, 0.07f, 0.037f), hair);
             }
             Collar(l, 1.50f, 0.14f, 1.52f, 1.455f);
             Box("Shirt", l, new Vector3(0f, 1.3f, 0.143f), new Vector3(0.12f, 0.3f, 0.008f), Pillow);
@@ -647,11 +736,34 @@ namespace PhoneGame
                 Box("Hand", l, new Vector3(sgn * 0.26f, 0.72f, 0f), new Vector3(0.06f, 0.1f, 0.09f), Skin);
             }
             Box("Shoes", l, new Vector3(0f, 0.04f, 0.04f), new Vector3(0.44f, 0.08f, 0.32f), Black);
-            if (female)
+            if (female && young)
+            {
+                // a schoolgirl: long hair behind the shoulders or a ponytail, a bow, pleated skirt, bare knees, white socks
+                foreach (int sgn in new[] { -1, 1 })
+                    Box("HairSide", l, new Vector3(sgn * 0.158f, 1.6f, -0.075f), new Vector3(0.03f, 0.36f, 0.13f), hair);
+                if (v % 2 == 0) Box("HairLong", l, new Vector3(0f, 1.47f, -0.157f), new Vector3(0.29f, 0.42f, 0.04f), hair);
+                else
+                {
+                    Box("Ponytail", l, new Vector3(0f, 1.56f, -0.2f), new Vector3(0.09f, 0.3f, 0.07f), hair, false, new Vector3(-12f, 0f, 0f));
+                    Box("HairTie", l, new Vector3(0f, 1.71f, -0.175f), new Vector3(0.06f, 0.045f, 0.045f), Pastels[v % Pastels.Length]);
+                }
+                Bow(l, new Vector3(0f, 1.42f, 0.152f), 0.07f, Tie);
+                Box("Skirt", l, new Vector3(0f, 0.72f, 0f), new Vector3(0.5f, 0.42f, 0.33f), SkirtMat());
+                Box("Legs", l, new Vector3(0f, 0.38f, 0f), new Vector3(0.46f, 0.26f, 0.29f), Skin);
+                Box("Socks", l, new Vector3(0f, 0.16f, 0f), new Vector3(0.47f, 0.2f, 0.3f), SockMat());
+            }
+            else if (female)
             {
                 Box("Bun", l, new Vector3(0f, 1.74f, -0.2f), new Vector3(0.15f, 0.15f, 0.11f), hair);
                 Box("Skirt", l, new Vector3(0f, 0.72f, 0f), new Vector3(0.53f, 0.5f, 0.34f), suit);
                 Box("Stockings", l, new Vector3(0f, 0.25f, 0.02f), new Vector3(0.46f, 0.42f, 0.29f), Black);
+            }
+            else if (young)
+            {
+                // a schoolboy: school tie, grey trousers
+                Box("Tie", l, new Vector3(0f, 1.27f, 0.15f), new Vector3(0.06f, 0.3f, 0.01f), Tie);
+                Box("Trousers", l, new Vector3(0f, 0.46f, 0f), new Vector3(0.46f, 0.88f, 0.29f), TrouserMat());
+                Box("Belt", l, new Vector3(0f, 0.9f, 0f), new Vector3(0.47f, 0.04f, 0.3f), Black);
             }
             else
             {
@@ -673,41 +785,80 @@ namespace PhoneGame
         /// For every such pair the smaller part grows by a few millimetres on that axis, so its face sits clearly in
         /// front. Runs a few passes, because one fix can create a new flush pair.
         /// </summary>
-        public static void NoCoplanarFaces(Transform fig, float gap = 0.004f)
+        public static void NoCoplanarFaces(Transform root, float gap = 0.004f)
         {
             for (int pass = 0; pass < 4; pass++)
             {
                 List<Transform> boxes = new List<Transform>();
+                List<Bounds> aabb = new List<Bounds>();
                 List<Part> fixedParts = new List<Part>();
                 int fixes = 0;
-                foreach (MeshFilter mf in fig.GetComponentsInChildren<MeshFilter>(true))
+                foreach (MeshFilter mf in root.GetComponentsInChildren<MeshFilter>(true))
                 {
                     Renderer rr = mf.GetComponent<Renderer>();
                     if (mf.sharedMesh == null || rr == null || !rr.enabled) continue;
                     if (mf.sharedMesh.name == "Cube") boxes.Add(mf.transform);
-                    else AddBlockParts(mf.transform, mf.sharedMesh.name, fixedParts);   // the white-box body: never resized
+                    else AddBlockParts(mf.transform, mf.sharedMesh.name, fixedParts);   // the white-box figure bodies: never resized
                 }
-                // a part flush with the white-box body grows outward
+                // sweep along X so a whole scene stays fast
+                boxes.Sort((a, b) => a.GetComponent<Renderer>().bounds.min.x.CompareTo(b.GetComponent<Renderer>().bounds.min.x));
+                foreach (Transform b in boxes) { Bounds bb = b.GetComponent<Renderer>().bounds; bb.Expand(0.02f); aabb.Add(bb); }
+
+                // a part flush with a white-box body grows outward
                 foreach (Transform b in boxes)
                     foreach (Part f in fixedParts)
                     {
-                        if (Quaternion.Angle(b.rotation, f.rot) > 0.05f) continue;
-                        int k = FlushAxis(f.centre, f.half, f.rot, b.position, Half(b));
-                        if (k >= 0) { Grow(b, k, gap); fixes++; break; }
+                        if (Vector3.SqrMagnitude(b.position - f.centre) > 9f) continue;
+                        int kb;
+                        int k = FlushPair(f.centre, f.half, f.rot, b, out kb);
+                        if (k >= 0) { Grow(b, kb, gap); fixes++; break; }
                     }
                 for (int i = 0; i < boxes.Count; i++)
+                {
+                    Bounds ai = aabb[i];
                     for (int j = i + 1; j < boxes.Count; j++)
                     {
+                        Bounds aj = aabb[j];
+                        if (aj.min.x > ai.max.x) break;
+                        if (!ai.Intersects(aj)) continue;
                         Transform A = boxes[i], B = boxes[j];
-                        if (Quaternion.Angle(A.rotation, B.rotation) > 0.05f) continue;   // only parts with the same orientation
-                        int k = FlushAxis(A.position, Half(A), A.rotation, B.position, Half(B));
+                        int kb;
+                        int k = FlushPair(A.position, Half(A), A.rotation, B, out kb);
                         if (k < 0) continue;
                         Vector3 ha = Half(A), hb = Half(B);
-                        Grow(ha.x * ha.y * ha.z >= hb.x * hb.y * hb.z ? B : A, k, gap);
+                        if (ha.x * ha.y * ha.z >= hb.x * hb.y * hb.z) Grow(B, kb, gap);
+                        else Grow(A, k, gap);
                         fixes++;
                     }
+                }
                 if (fixes == 0) break;
             }
+        }
+
+        /// <summary>
+        /// Box B against box A (centre, half size, rotation). If their axes line up (any 90-degree turn) and B has a face
+        /// in the same plane as A's, facing the same way and overlapping, returns A's axis (and B's matching local axis).
+        /// </summary>
+        static int FlushPair(Vector3 ca, Vector3 ha, Quaternion ra, Transform B, out int kb)
+        {
+            kb = -1;
+            Quaternion rel = Quaternion.Inverse(ra) * B.rotation;
+            Vector3 hbLocal = Half(B);
+            Vector3 hb = Vector3.zero;
+            int[] map = new int[3];   // A axis -> B axis
+            for (int j = 0; j < 3; j++)
+            {
+                Vector3 axis = rel * (j == 0 ? Vector3.right : (j == 1 ? Vector3.up : Vector3.forward));
+                int best = 0; float bv = Mathf.Abs(axis.x);
+                if (Mathf.Abs(axis.y) > bv) { best = 1; bv = Mathf.Abs(axis.y); }
+                if (Mathf.Abs(axis.z) > bv) { best = 2; bv = Mathf.Abs(axis.z); }
+                if (bv < 0.9999f) return -1;   // turned at an odd angle: can't be flush
+                hb[best] = hbLocal[j];
+                map[best] = j;
+            }
+            int k = FlushAxis(ca, ha, ra, B.position, hb);
+            if (k >= 0) kb = map[k];
+            return k;
         }
 
         struct Part { public Vector3 centre, half; public Quaternion rot; }
@@ -765,6 +916,7 @@ namespace PhoneGame
             Vector3 ls = b.localScale;
             float per = Mathf.Abs(ls[k]) > 1e-5f ? Mathf.Abs(b.lossyScale[k] / ls[k]) : 1f;
             if (per < 1e-5f) per = 1f;
+            if (Mathf.Abs(b.lossyScale[k]) < 0.012f) gap *= 0.4f;   // thin decals (scratches, tape): only nudge them
             ls[k] += Mathf.Sign(ls[k] == 0f ? 1f : ls[k]) * 2f * gap / per;
             b.localScale = ls;
         }

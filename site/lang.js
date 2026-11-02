@@ -3,7 +3,7 @@ window.CGDD_LANG = {
     zh: {
       skip: "跳到框架",
       kicker: "CGDD · Unity 6 · CGDD-Game2",
-      lede: "Game: **COVER** (Ariel & Nina, CGDD 2026). A first-person stealth game: you sneak phone use in a sealed, surveilled school, Clearview Academy (est. 1952, \"What is seen, is safe\"…",
+      lede: "《COVER》（Ariel & Nina，CGDD 2026）：一款第一人称潜行游戏。在“被看见的，就是安全的”明鉴学院里，藏好一部代代相传的手机。",
       nav1: "01 框架 Framework",
       nav2: "02 过程 Process",
       nav3: "03 成果 Playable",
@@ -42,7 +42,7 @@ window.CGDD_LANG = {
     en: {
       skip: "Skip to framework",
       kicker: "CGDD · Unity 6 · CGDD-Game2",
-      lede: "Game: **COVER** (Ariel & Nina, CGDD 2026). A first-person stealth game: you sneak phone use in a sealed, surveilled school, Clearview Academy (est. 1952, \"What is seen, is safe\"…",
+      lede: "COVER (Ariel & Nina, CGDD 2026): a first-person stealth game about hiding a phone at Clearview Academy, a school where \"what is seen, is safe\".",
       nav1: "01 Framework",
       nav2: "02 Process",
       nav3: "03 Playable",

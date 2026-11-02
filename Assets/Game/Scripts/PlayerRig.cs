@@ -1,5 +1,6 @@
 // @role The player body: walk, pulled to the seat, seated look, inspect the desk cubby, lie down in bed
 // @tune walkSpeed:float:1-5:walking speed (m/s)
+// @tune sneakSpeed:float:0.5-2:quiet walking speed (hold Ctrl / C)
 // @tune sensitivity:float:1-10:mouse look speed
 // @tune pullSpeed:float:0.5-3:speed when the class watches you walk to your seat
 using UnityEngine;
@@ -25,6 +26,8 @@ namespace PhoneGame
         [Header("Walking")]
         public float walkSpeed = 2.8f;
         public float runSpeed = 4.2f;
+        [Tooltip("Hold Left Ctrl / C: walk quietly at this speed.")]
+        public float sneakSpeed = 1.2f;
         public float gravity = -20f;
         public float standingEye = 1.5f;
         public float pullSpeed = 1.3f;
@@ -91,7 +94,7 @@ namespace PhoneGame
             Vector2 mv = freezeMovement ? Vector2.zero : GameInput.Move();
             Vector3 dir = transform.right * mv.x + transform.forward * mv.y;
             if (dir.sqrMagnitude > 1f) dir.Normalize();
-            float speed = GameInput.RunHeld() ? runSpeed : walkSpeed;
+            float speed = GameInput.SneakHeld() ? sneakSpeed : (GameInput.RunHeld() ? runSpeed : walkSpeed);
             if (!cc.enabled) return;
             if (cc.isGrounded) vy = -1f;
             vy += gravity * Time.deltaTime;

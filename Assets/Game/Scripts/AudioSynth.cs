@@ -247,6 +247,26 @@ namespace PhoneGame
         }
 
         /// <summary>A creaking door.</summary>
+        /// <summary>A page turned in an old book: a dry, papery rustle (band-passed noise, two quick swells).</summary>
+        public static AudioClip Rustle()
+        {
+            AudioClip c; if (Cached("rustle", out c)) return c;
+            int n = (int)(SR * 0.32f);
+            float[] d = new float[n];
+            float lp = 0f, hp = 0f, prev = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float x = Noise();
+                lp += (x - lp) * 0.35f;          // low-pass
+                hp = lp - prev; prev = lp;        // then high-pass = papery band
+                float env = Mathf.Exp(-Mathf.Pow((t - 0.06f) / 0.04f, 2f)) + 0.7f * Mathf.Exp(-Mathf.Pow((t - 0.19f) / 0.06f, 2f));
+                d[i] = hp * env * (0.7f + 0.3f * Noise());
+            }
+            Normalize(d, 0.55f);
+            return Make("rustle", d);
+        }
+
         public static AudioClip Creak()
         {
             AudioClip c; if (Cached("creak", out c)) return c;
@@ -264,6 +284,49 @@ namespace PhoneGame
             }
             Normalize(d, 0.5f);
             return Make("creak", d);
+        }
+
+        /// <summary>A pigeon's soft "hoo-HOOoo" (low, breathy - about as present as a footstep, never startling).</summary>
+        public static AudioClip Coo()
+        {
+            AudioClip c; if (Cached("coo", out c)) return c;
+            int n = (int)(SR * 1.15f);
+            float[] d = new float[n];
+            float phase = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                // two notes: a short low one, then a longer one that rises and falls
+                float env, f;
+                if (t < 0.28f) { env = Mathf.Sin(Mathf.PI * t / 0.28f); f = 300f; }
+                else if (t < 0.38f) { env = 0f; f = 300f; }
+                else { float u = (t - 0.38f) / 0.77f; env = Mathf.Sin(Mathf.PI * u) * (1f - 0.3f * u); f = 310f + 70f * Mathf.Sin(Mathf.PI * u); }
+                f += 9f * Mathf.Sin(TwoPi * 23f * t);   // the throaty warble
+                phase += f / SR;
+                float tone = Mathf.Sin(TwoPi * phase) + 0.25f * Mathf.Sin(TwoPi * phase * 2f);
+                d[i] = (tone * 0.85f + Noise() * 0.12f) * env * env;
+            }
+            Normalize(d, 0.45f);
+            return Make("coo", d);
+        }
+
+        /// <summary>A few wing beats (soft noise bursts).</summary>
+        public static AudioClip Flap()
+        {
+            AudioClip c; if (Cached("flap", out c)) return c;
+            int n = (int)(SR * 0.7f);
+            float[] d = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float beat = Mathf.Repeat(t, 0.11f) / 0.11f;
+                float env = Mathf.Exp(-beat * 6f) * (1f - t / 0.7f);
+                lp += (Noise() - lp) * 0.35f;
+                d[i] = lp * env;
+            }
+            Normalize(d, 0.5f);
+            return Make("flap", d);
         }
 
         /// <summary>Low hit used when a warning is given.</summary>

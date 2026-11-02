@@ -47,8 +47,12 @@ namespace PhoneGame
         public float firstCallAtBootSecond = 3f;
 
         [Header("Roll call (the player's name goes after these)")]
-        public string[] namesBefore = { "Emily Carter", "Daniel Brooks", "Sophie Turner" };
-        public string[] namesAfter = { "Lucas Reed" };
+        // Roll-call names are an homage: Irving Adler (the teacher fired under New York's Feinberg Law - Adler v. Board
+        // of Education, 1952), Harry Keyishian (whose case struck that law down in January 1967), Ellwood Cubberley
+        // (the school reformer the Cubberley Wing / Cubberley High School is named after) and Bert, the turtle from
+        // the 1952 school film "Duck and Cover".
+        public string[] namesBefore = { "Irving Adler", "Harry Keyishian", "Ellwood Cubberley" };
+        public string[] namesAfter = { "Bert Turtle" };
 
         float nextCall = -1f;
         bool seated, calling, rollCall, bootCallDone, cubbySearched, toldAboutDanger, staring;
@@ -147,9 +151,9 @@ namespace PhoneGame
             caption.text = L("MONDAY.  FIRST PERIOD.", "星期一。第一节课。");
             if (bellClip != null) ambient.Play(bellClip, 0.85f);
             StartCoroutine(Fade(1f, 0f, 1.2f));
-            yield return new WaitForSeconds(bellClip != null ? 2.6f : 0.5f);
+            yield return Wait(bellClip != null ? 2.6f : 0.5f);
             Authority(L("(from inside the classroom)  ...The bell has rung. Whoever is standing at the door. In. Now.", "（教室里传来）……铃已经响了。站在门口的那个。进来。现在。"), 4.5f, true, 0.3f);
-            yield return new WaitForSeconds(1.2f);
+            yield return Wait(1.2f);
             caption.text = "";
             if (rig.CurrentMode == PlayerRig.Mode.Locked && !seated) rig.AllowWalk();
             Thought(L("Late. Everyone is going to stare.\nW + mouse: walk into the classroom", "迟到了。所有人都会盯着我看。\nW + 鼠标：走进教室"), 30f, false, 0.3f);
@@ -188,16 +192,15 @@ namespace PhoneGame
         {
             rollCall = true;
             yield return WaitIdle();
-            yield return new WaitForSeconds(0.3f);
             staring = false;
 
-            Authority(L("Roll call. Answer when you hear your name.", "点名。听到名字就答到。"), 3f, false, 0.4f);
+            Authority(L("Roll call. Answer when you hear your name.", "点名。听到名字就答到。"), 2.2f, false, 0.15f);
             yield return RollName(namesBefore.Length > 0 ? namesBefore[0] : null);
-            Thought(Rule(L("Every device in this school is monitored.", "这所学校的每台设备都被监控着。")) + L("\nIf he sees a phone, he takes it.", "\n只要他看见手机，就会收走。"), 5.5f, false, 0.4f);
+            Thought(Rule(L("Every device in this school is monitored.", "这所学校的每台设备都被监控着。")) + L("\nIf he sees a phone, he takes it.", "\n只要他看见手机，就会收走。"), 4f, false, 0.15f);
             yield return RollName(namesBefore.Length > 1 ? namesBefore[1] : null);
-            Thought(L("He calls on people at random.\n", "他会随机点人回答问题。\n") + Rule(L("Listen to him", "认真听他讲")) + L(" - he only asks about what he has said.", "——他只问他讲过的内容。"), 5.5f, false, 0.4f);
+            Thought(L("He calls on people at random.\n", "他会随机点人回答问题。\n") + Rule(L("Listen to him", "认真听他讲")) + L(" - he only asks about what he has said.", "——他只问他讲过的内容。"), 4f, false, 0.15f);
             yield return RollName(namesBefore.Length > 2 ? namesBefore[2] : null);
-            Thought(L("The older kids say he gives ", "学长学姐说他会给") + Rule(L("three warnings", "三次警告")) + L(".\nAfter the third, he takes whatever you're hiding.", "。\n第三次之后，你藏的东西就归他了。"), 6f, false, 0.4f);
+            Thought(L("The older kids say he gives ", "学长学姐说他会给") + Rule(L("three warnings", "三次警告")) + L(".\nAfter the third, he takes whatever you're hiding.", "。\n第三次之后，你藏的东西就归他了。"), 4.5f, false, 0.15f);
             yield return WaitIdle();
 
             // the player's own name
@@ -218,27 +221,28 @@ namespace PhoneGame
                 questionBox.SetActive(false);
                 ClearLine();
             }
-            if (answered) { StudentSay(Name, L("Here.", "到。"), 1.6f, false, 0.3f); Authority(L("...Late, and slow. Noted.", "……迟到，还反应慢。记下了。"), 3f, false, 0.4f); }
-            else Authority(L("...Present, I suppose. Barely.", "……算你在吧。勉强。"), 3f, false, 0.4f);
-
-            Thought(L("And this seat... they say whoever sits here\n", "还有这个座位……据说坐在这里的人\n") + Rule(L("finds something in the desk", "都会在课桌里找到点什么")) + L(".", "。"), 6f, false, 0.4f);
-            foreach (string n in namesAfter) yield return RollName(n);
-            Authority(L("Good. Today: the Founding Charter. Listen carefully. I will be asking questions.", "很好。今天讲《建校章程》。认真听，我会提问。"), 5f, false, 0.4f);
-            yield return WaitIdle();
-
+            if (answered) { StudentSay(Name, L("Here.", "到。"), 1f, false, 0.15f); Authority(L("...Late, and slow. Noted.", "……迟到，还反应慢。记下了。"), 2.2f, false, 0.2f); }
+            else Authority(L("...Present, I suppose. Barely.", "……算你在吧。勉强。"), 2.2f, false, 0.2f);
+            // the desk can be searched right away (the rest of the roll call goes on around you)
             rollCall = false;
             if (cubbyZone != null) cubbyZone.active = true;
+            StartCoroutine(Reminder(L("(Something about this desk feels off... look down at the cubby.)", "（这张课桌有点不对劲……低头看看桌肚。）"), () => cubbySearched, 30f));
+
+            Thought(L("And this seat... they say whoever sits here\n", "还有这个座位……据说坐在这里的人\n") + Rule(L("finds something in the desk", "都会在课桌里找到点什么")) + L(".", "。"), 4.5f, false, 0.15f);
+            foreach (string n in namesAfter) yield return RollName(n);
+            Authority(L("Good. Today: the Founding Charter. Listen carefully. I will be asking questions.", "很好。今天讲《建校章程》。认真听，我会提问。"), 3.8f, false, 0.3f);
+            yield return WaitIdle();
+
             if (teacher != null) teacher.EndCall();
             lecture = StartCoroutine(Lecture());
-            StartCoroutine(Reminder(L("(Something about this desk feels off... look down at the cubby.)", "（这张课桌有点不对劲……低头看看桌肚。）"), () => cubbySearched, 30f));
         }
 
         IEnumerator RollName(string n)
         {
             if (string.IsNullOrEmpty(n)) yield break;
             string shown = Loc.T(n);
-            Authority(shown + L(".", "。"), 1.6f, false, 0.25f);
-            StudentSay(shown, L("Here.", "到。"), 1.3f, false, 0.35f);
+            Authority(shown + L(".", "。"), 1f, false, 0.1f);
+            StudentSay(shown, L("Here.", "到。"), 0.8f, false, 0.15f);
             yield return null;
         }
 
@@ -307,7 +311,7 @@ namespace PhoneGame
             hiddenPhone.gameObject.SetActive(false);
             phone.hasPhone = true;
             nextCall = Random.Range(callInterval.x, callInterval.y);
-            Thought(L("(An old phone. A sticky note on the back: \"it opens the year it all began.\")", "（一部旧手机。背面贴着便利贴：\"一切开始的那一年，就能打开它。\"）"), 8f, true);
+            Thought(L("(An old phone. A sticky note on the back: \"it opens the year it all began.\")", "（一部旧手机。背面贴着一张便利贴：\"密码是一切开始的那一年。\"）"), 8f, true);
             StartCoroutine(Reminder(L("Sit up [Space], then ", "先坐直 [空格]，再") + Rule(L("HOLD RIGHT MOUSE", "按住鼠标右键")) + L(" to take out the phone.", "拿出手机。"), () => phone.RaisedOnce || ended, 20f));
         }
 
@@ -318,13 +322,13 @@ namespace PhoneGame
             phone.allowRaise = false;
             rig.Lock();
             if (lecture != null) StopCoroutine(lecture);
-            Thought(L("(You tap their shoulder. Twice.)", "（你拍了拍前桌的肩膀。两下。）"), 2.5f, true);
-            yield return new WaitForSeconds(2f);
+            Thought(L("(You tap their shoulder. Twice.)", "（你拍了拍前桌的肩膀。两下。）"), 1.8f, true);
+            yield return Wait(0.8f);
             // they turn round to face you, chair and all (the chair spins with them, so nothing clips)
             Transform s = frontStudent.transform;
             Quaternion r0 = s.rotation;
             Quaternion c0 = frontChair != null ? frontChair.rotation : Quaternion.identity;
-            for (float k = 0f; k <= 1f; k += Time.deltaTime / 1.1f)
+            for (float k = 0f; k <= 1f; k += GameSpeed.Dt / 0.8f)
             {
                 float e = Mathf.Clamp01(k * k * (3f - 2f * k));
                 Quaternion turn = Quaternion.Euler(0f, -180f * e, 0f);   // both turn the same way (towards the window side)
@@ -334,10 +338,10 @@ namespace PhoneGame
             }
             s.rotation = r0 * Quaternion.Euler(0f, 180f, 0f);
             if (frontChair != null) frontChair.rotation = c0 * Quaternion.Euler(0f, 180f, 0f);
-            yield return new WaitForSeconds(0.8f);
-            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("...Took you long enough. Keep it hidden.", "……你可真慢。藏好它。"), 4.5f);
-            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("After the bell - the stairwell. I'll show you where we really go.", "下课后——楼梯间。我带你去我们真正去的地方。"), 5.5f);
-            yield return new WaitForSeconds(1f);
+            yield return Wait(0.3f);
+            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("...Took you long enough. Keep it hidden.", "……你可真慢。藏好它。"), 2.8f, false, 0.15f);
+            StudentSay(L("STUDENT (whispering)", "同学（小声）"), L("After the bell - the stairwell. I'll show you where we really go.", "下课后——楼梯间。我带你去我们真正去的地方。"), 3.8f, false, 0.15f);
+            yield return Wait(0.3f);
             yield return WaitIdle();
             yield return FinishLevel("contact", 1.2f);
         }
@@ -366,7 +370,7 @@ namespace PhoneGame
             if (teacher != null && takePhoneStandPoint != null) teacher.Approach(takePhoneStandPoint.position, rig.transform);
             staring = true;
             float t = 0f;
-            yield return new WaitForSeconds(0.5f);
+            yield return Wait(0.5f);
             while (teacher != null && !teacher.HasArrived && t < 8f) { t += Time.deltaTime; yield return null; }
             yield return WaitIdle();
             Thought(L("(He takes the phone. Everyone saw.)", "（他拿走了手机。所有人都看见了。）"), 4f, true);
@@ -385,15 +389,17 @@ namespace PhoneGame
                 {
                     int idx = i % teacher.lines.Count;
                     if (idx > linesSaid) linesSaid = idx;
-                    Authority(Loc.T(teacher.lines[idx].text));
+                    string line = Loc.T(teacher.lines[idx].text);
+                    // as long as it takes to read, no longer
+                    Authority(line, Mathf.Clamp(1.4f + line.Length * (Loc.Chinese ? 0.1f : 0.042f), 2.4f, 5f), false, 0.25f);
                     i++;
                     yield return WaitIdle();
                     // the school interrupts, politely (dark humour)
-                    if (i == 5 && !pa1) { pa1 = true; PA(L("This is a reminder that you are happy. Thank you.", "温馨提示：您很快乐。谢谢。")); yield return WaitIdle(); }
-                    if (i == 10 && !pa2) { pa2 = true; PA(L("Reminder: the pigeons in the courtyard are not your friends.", "提醒：庭院里的鸽子不是您的朋友。")); yield return WaitIdle(); }
-                    // a pause between lines - this is where the player's thoughts get their turn
+                    if (i == 5 && !pa1) { pa1 = true; PA(L("This is a reminder that you are happy. Thank you.", "温馨提示：您很快乐。谢谢。"), 3.2f, false, 0.25f); yield return WaitIdle(); }
+                    if (i == 10 && !pa2) { pa2 = true; PA(L("Reminder: the pigeons in the courtyard are not your friends.", "提醒：庭院里的鸽子不是您的朋友。"), 3.4f, false, 0.25f); yield return WaitIdle(); }
+                    // a short pause between lines - this is where the player's thoughts get their turn
                     float t = 0f;
-                    while (t < 3f && !ended) { if (DialogueIdle) t += Time.deltaTime; yield return null; }
+                    while (t < 1.1f && !ended) { if (DialogueIdle) t += GameSpeed.Dt; yield return null; }
                 }
                 yield return null;
             }
@@ -405,7 +411,7 @@ namespace PhoneGame
             if (!calling)
             {
                 if (!bootCallDone && phone.BootSecondsElapsed >= firstCallAtBootSecond) { bootCallDone = true; StartCall(); return; }
-                if (nextCall > 0f) { nextCall -= Time.deltaTime; if (nextCall <= 0f) StartCall(); }
+                if (nextCall > 0f) { nextCall -= GameSpeed.Dt; if (nextCall <= 0f) StartCall(); }
                 return;
             }
 

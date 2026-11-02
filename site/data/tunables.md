@@ -6,6 +6,16 @@ Generated from `@tune` headers by the menu `CGDD/Export Trace Docs`. Hand edits 
 | --- | --- | --- | --- | --- | --- |
 | AmbientAudio | droneVolume | float | 0-0.5 | 0.16 | background drone level |
 | AmbientAudio | ventVolume | float | 0-0.5 | 0.09 | ventilation hum level |
+| ArchiveDirector | walkDoubling | float | 0.5-6 | 2 | walking without a break doubles the noise rate every this many seconds |
+| ArchiveDirector | walkMaxFactor | float | 1-10 | 5 | cap on that build-up |
+| ArchiveDirector | pigeonNear | float | 1-5 | 2.6 | closer than this to the window when she comes to shoo the pigeons = a warning (m) |
+| ArchiveDirector | noiseWalk | float | 0-0.3 | 0.08 | meter per second while walking |
+| ArchiveDirector | noiseSneak | float | 0-0.1 | 0.012 | meter per second while walking quietly (Ctrl / C) |
+| ArchiveDirector | noiseRun | float | 0.1-1 | 0.45 | meter per second while running (Shift) |
+| ArchiveDirector | noiseDecay | float | 0.05-0.5 | 0.12 | meter drain per second while standing still |
+| ArchiveDirector | flipNoise | float | 0.02-0.4 | 0.16 | meter per page turned (slow) |
+| ArchiveDirector | silentFailChance | float | 0-1 | 0.3 | chance the silent switch quietly fails each time the phone comes out |
+| ArchiveDirector | fastFlipFactor | float | 1-5 | 2.6 | a page turned within fastFlipSeconds of the last one is this much louder |
 | Fluorescent | buzzVolume | float | 0-0.3 | 0.07 | fluorescent buzz loudness |
 | Footsteps | stepLength | float | 0.3-1.2 | 0.7 | metres per step sound |
 | Footsteps | volume | float | 0-1 | 0.55 | footstep loudness |
@@ -32,9 +42,18 @@ Generated from `@tune` headers by the menu `CGDD/Export Trace Docs`. Hand edits 
 | PhoneController | raiseSeconds | float | 0.1-1 | 0.25 | time to raise the phone |
 | PhoneController | readCharsPerSecond | float | 5-60 | 22 | message reading speed (only while the phone is up) |
 | PhoneController | glowIntensity | float | 0-4 | 1.6 | how much the screen lights your face (and gives you away at night) |
+| PictureDayDirector | freeSeconds | float | 20-90 | 42 | free time between two class photos |
+| PictureDayDirector | callSeconds | float | 5-40 | 10 | countdown to get to your spot |
+| PictureDayDirector | shutterHearing | float | 1-8 | 2.2 | how close a prefect must be to hear the shutter (m) - 2.2 = right next to you |
+| PictureDayDirector | flashRange | float | 4-20 | 15 | how far a flash is seen (any direction, line of sight) |
+| Pigeon | hopRadius | float | 0-1.5 | 0.6 | how far it hops from where it started (m) |
+| Pigeon | cooVolume | float | 0-1 | 0.2 | coo loudness (about as present as a footstep) |
 | PlayerRig | walkSpeed | float | 1-5 | 2.8 | walking speed (m/s) |
+| PlayerRig | sneakSpeed | float | 0.5-2 | 1.2 | quiet walking speed (hold Ctrl / C) |
 | PlayerRig | sensitivity | float | 1-10 | 5 | mouse look speed |
 | PlayerRig | pullSpeed | float | 0.5-3 | 1.3 | speed when the class watches you walk to your seat |
+| PosterEgg | readFirst | float | 0-5 | — | seconds of looking before it starts to change (0 = from the text length) |
+| PosterEgg | changeSeconds | float | 0-5 | — | seconds the change takes (0 = by kind) |
 | TeacherAI | lectureWeight | float | 0-1 | 0.35 | chance he lectures facing the class |
 | TeacherAI | boardWeight | float | 0-1 | 0.3 | chance he turns to the board (safe window) |
 | TeacherVision | viewAngle | float | 30-180 | 90 | width of the view cone (degrees) |

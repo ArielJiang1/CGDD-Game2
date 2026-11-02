@@ -1,3 +1,5 @@
+// @role Builds every on-screen panel, text, button and world-space poster canvas in code (no prefabs), with the right font for English or Chinese
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -88,7 +90,7 @@ namespace PhoneGame
             rt.rotation = rot;
             rt.localScale = Vector3.one * 0.001f;
             CanvasScaler s = go.GetComponent<CanvasScaler>();
-            s.dynamicPixelsPerUnit = 3f;
+            s.dynamicPixelsPerUnit = TypewriterFont.PosterPixelsPerUnit;   // see TypewriterFont: bigger overflows the CJK font atlas
             return c;
         }
 
@@ -142,6 +144,36 @@ namespace PhoneGame
             t.verticalOverflow = VerticalWrapMode.Overflow;
             t.raycastTarget = false;
             return t;
+        }
+
+        static readonly Dictionary<Text, int> baseSizes = new Dictionary<Text, int>();
+        static readonly Dictionary<Text, string> fitted = new Dictionary<Text, string>();
+
+        /// <summary>Height the text would need in this box (layout units), wrapping to the box width.</summary>
+        public static float PreferredHeight(Text t, string full, int fontSize = -1)
+        {
+            TextGenerationSettings g = t.GetGenerationSettings(new Vector2(t.rectTransform.rect.width, 0f));
+            if (fontSize > 0) g.fontSize = fontSize;
+            g.resizeTextForBestFit = false;
+            return t.cachedTextGeneratorForLayout.GetPreferredHeight(full ?? "", g) / Mathf.Max(0.01f, t.pixelsPerUnit);
+        }
+
+        /// <summary>
+        /// Picks the biggest font size (from the text's own size down to 'min') at which 'full' fits inside the box.
+        /// Use the FULL string even while it is being typed, so the size never jumps. (Chinese lines are longer.)
+        /// </summary>
+        public static void FitFont(Text t, string full, int min = 11)
+        {
+            if (t == null) return;
+            int max;
+            if (!baseSizes.TryGetValue(t, out max)) { max = t.fontSize; baseSizes[t] = max; }
+            string last;
+            if (fitted.TryGetValue(t, out last) && last == full) return;
+            fitted[t] = full;
+            float h = t.rectTransform.rect.height;
+            int size = max;
+            while (size > min && PreferredHeight(t, full, size) > h) size--;
+            t.fontSize = size;
         }
 
         public static void AddShadow(Graphic g, Color c, float distance)

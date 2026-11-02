@@ -10,19 +10,28 @@ EditorBuildSettings:
     guid: d6db9b7a3255f40cdbf8e531c89f5918
   - enabled: 1
     path: Assets/Game/Scenes/Level01_Lesson.unity
-    guid: 7b8e0d0043cea463f9404fa242397421
+    guid: 284532dd45ba442fc95ee58bb4adee12
   - enabled: 1
     path: Assets/Game/Scenes/Level02_Lunch.unity
-    guid: 42d5367d232bf4fff8060c04b688f4ba
+    guid: 9c6ad2e3218da454cb05a235cbf2f049
   - enabled: 1
     path: Assets/Game/Scenes/Level03_LightsOut.unity
     guid: 997813c137d994016843a7c0b3200ebe
   - enabled: 1
-    path: Assets/Game/Scenes/Level04_Inspector.unity
-    guid: 936fb90966d2c43a597443892f64084a
+    path: Assets/Game/Scenes/Level04_PictureDay.unity
+    guid: d6a91c2edb9814e21bd1fb9eee52efe1
+  - enabled: 1
+    path: Assets/Game/Scenes/Level05_Archive.unity
+    guid: 532335120d22f45f483ddfa29f71d8e7
+  - enabled: 1
+    path: Assets/Game/Scenes/Level06_Inspector.unity
+    guid: a32b0ecd27ecb4e3c89b5c83620068c2
   - enabled: 1
     path: Assets/Game/Scenes/End.unity
     guid: 96cd2bae483b048e0a9af7dc229cf7f6
+  - enabled: 0
+    path: Assets/Game/Scenes/Level04_Inspector.unity
+    guid: 2e1dd7f9e718444c69c54b3c994a9fa7
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05

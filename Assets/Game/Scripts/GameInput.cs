@@ -40,6 +40,12 @@ namespace PhoneGame
         public static bool EnterDown() { return K != null && (Down(K.enterKey) || Down(K.numpadEnterKey)); }
         public static bool EscDown() { return K != null && Down(K.escapeKey); }
         public static bool RunHeld() { return K != null && Held(K.leftShiftKey); }
+        /// <summary>Walk quietly (half speed): Left Ctrl or C.</summary>
+        public static bool SneakHeld() { return K != null && (Held(K.leftCtrlKey) || Held(K.cKey)); }
+        /// <summary>The phone's silent mode switch (Chapter 5): M.</summary>
+        public static bool MuteDown() { return K != null && Down(K.mKey); }
+        /// <summary>2x story speed toggle: Tab.</summary>
+        public static bool SpeedDown() { return K != null && Down(K.tabKey); }
         /// <summary>Playtest shortcut: skip the current chapter.</summary>
         public static bool SkipDown() { return K != null && Down(K.f8Key); }
 
@@ -77,6 +83,9 @@ namespace PhoneGame
         public static bool EnterDown() { return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter); }
         public static bool EscDown() { return Input.GetKeyDown(KeyCode.Escape); }
         public static bool RunHeld() { return Input.GetKey(KeyCode.LeftShift); }
+        public static bool SneakHeld() { return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C); }
+        public static bool MuteDown() { return Input.GetKeyDown(KeyCode.M); }
+        public static bool SpeedDown() { return Input.GetKeyDown(KeyCode.Tab); }
         /// <summary>Playtest shortcut: skip the current chapter.</summary>
         public static bool SkipDown() { return Input.GetKeyDown(KeyCode.F8); }
 

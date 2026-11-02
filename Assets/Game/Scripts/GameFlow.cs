@@ -1,4 +1,4 @@
-// @role Scene flow: Title -> Chapter 1-4 -> End page (win: next chapter, caught: retry); saves progress and the player name
+// @role Scene flow: Title -> Chapter 1-6 (Monday to Friday) -> End page (win: next chapter, caught: retry); saves progress and the player name
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,7 +8,7 @@ namespace PhoneGame
 
     /// <summary>
     /// Scene-to-scene flow. Static, so it survives scene loads without a DontDestroyOnLoad object.
-    /// Title -> Chapter 1..4 -> End (after every chapter: win = Continue, caught = Retry this chapter).
+    /// Title -> Chapter 1..6 -> End (after every chapter: win = Continue, caught = Retry this chapter).
     /// The last chapter has two endings (endingChoice 1 = THE SEAT, 2 = LIGHTS).
     /// Progress (highest chapter reached + the player's name) is saved in PlayerPrefs.
     /// </summary>
@@ -16,8 +16,8 @@ namespace PhoneGame
     {
         public const string TitleScene = "Title";
         public const string EndScene = "End";
-        public static readonly string[] Levels = { "Level01_Lesson", "Level02_Lunch", "Level03_LightsOut", "Level04_Inspector" };
-        public static readonly string[] LevelTitles = { "1   THE LESSON", "2   LUNCH", "3   LIGHTS OUT", "4   INSPECTION DAY" };
+        public static readonly string[] Levels = { "Level01_Lesson", "Level02_Lunch", "Level03_LightsOut", "Level04_PictureDay", "Level05_Archive", "Level06_Inspector" };
+        public static readonly string[] LevelTitles = { "1   THE LESSON", "2   LUNCH", "3   LIGHTS OUT", "4   PICTURE DAY", "5   THE ARCHIVE", "6   INSPECTION DAY" };
 
         public static bool skipIntro;
         /// <summary>Typed on the title page. The teacher uses it in the roll call and when he calls on you.</summary>

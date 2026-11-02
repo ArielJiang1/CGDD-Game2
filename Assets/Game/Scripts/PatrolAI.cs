@@ -61,6 +61,9 @@ namespace PhoneGame
         }
 
         /// <summary>Walk a list of points. waits[i] = seconds at point i; yaws[i] = facing there (NaN = keep).</summary>
+        [Tooltip("Speeds up the pauses at each point (story speed 2x sets this to 2).")]
+        public float timeScale = 1f;
+
         public void RunRoute(Vector3[] points, float[] waits, float[] yaws, System.Action done)
         {
             holding = false;
@@ -120,7 +123,7 @@ namespace PhoneGame
                 scanT += Time.deltaTime * scanSpeed;
                 float yawNow = baseYaw + Mathf.Sin(scanT * Mathf.PI) * scanAngle;
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0f, yawNow, 0f), 140f * Time.deltaTime);
-                waitLeft -= Time.deltaTime;
+                waitLeft -= Time.deltaTime * timeScale;
                 if (waitLeft <= 0f) Next();
             }
         }

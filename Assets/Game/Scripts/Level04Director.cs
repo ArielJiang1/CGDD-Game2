@@ -1,4 +1,4 @@
-// @role Chapter 4 Inspection Day: get the phone back, the 1979 photo (Voss was Seat 31), desk inspection, final choice: hide it (THE SEAT) or send it to everyone (LIGHTS)
+// @role Chapter 6 Inspection Day (Friday, the fifth day): get the phone back, the 1979 photo (Voss was Seat 31), desk inspection, final choice: hide it (THE SEAT) or send it to everyone (LIGHTS)
 // @calls LevelDirectorBase, TeacherAI, TeacherVision, PhoneController, PlayerRig, Interactable, GameFlow
 // @tune answerSeconds:float:4-20:time to answer his questions
 // @tune inspectionFallbackSeconds:float:60-300:the inspection starts anyway this long after you take the phone
@@ -33,6 +33,10 @@ namespace PhoneGame
         public Transform basementSeat;
         public Transform basementDoorHinge;
         public GameObject vossInDoorway;
+        [Tooltip("The students in the basement (they turn their heads to the door when Voss appears).")]
+        public Transform[] basementStudents;
+        [Tooltip("What he finds on the desks he checks, in verdict order (pencils, horse drawing, nothing, the 'help' note). Built by GameSceneBuilder.")]
+        public GameObject[] verdictProps;
 
         [Header("Questions")]
         public float answerSeconds = 10f;
@@ -66,9 +70,11 @@ namespace PhoneGame
             phone.appUnlocked[PhoneController.AppPhotos] = true;
             phone.appUnlocked[PhoneController.AppMessages] = true;
             phone.appUnlocked[PhoneController.AppContacts] = true;
-            phone.lockNotification = L("2 new messages\nTriangle: inspection today.", "2 条新信息\n三角形：今天查课桌。");
-            phone.AddHistory("Triangle", L("the stairs are open tonight. you did good at lunch.", "今晚楼梯开着。午饭时你干得不错。"), false);
-            phone.AddHistory("Never Blinks", L("they saw. goodnight :)", "他们看到了。晚安 :)"), false);
+            phone.appUnlocked[PhoneController.AppCamera] = true;
+            phone.appUnlocked[PhoneController.AppSearch] = true;
+            phone.lockNotification = L("2 new messages\nTriangle: inspection today.", "2 条新信息\n三角：今天查课桌。");
+            phone.AddHistory("Triangle", L("volume 31. now you know what this place kept.", "第 31 卷。现在你知道这地方留下了什么。"), false);
+            phone.AddHistory("Never Blinks", L("day five tomorrow. can't sleep. goodnight :)", "明天就是第五天。睡不着。晚安 :)"), false);
             phone.onMessageArrived = () => { if (!phone.IsExposed) PhoneBuzz(); };
             foreach (Transform t in FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 if (t.name.StartsWith("Fig_Classmate_Seated")) classmates.Add(t);
@@ -113,10 +119,10 @@ namespace PhoneGame
         IEnumerator Opening()
         {
             rig.Lock();
-            yield return ChapterCard("CHAPTER 4", "INSPECTION DAY", "FRIDAY  -  09:00");
+            yield return ChapterCard("CHAPTER 6", "INSPECTION DAY", "FRIDAY  -  09:00");
             rig.BackToSeat();
             if (cubbyZone != null) cubbyZone.active = true;
-            if (bellClip != null) { ambient.Play(bellClip, 0.8f); yield return new WaitForSeconds(2.5f); }
+            if (bellClip != null) { ambient.Play(bellClip, 0.8f); yield return Wait(2.5f); }
             PA(L("Good morning! Today is Inspection Day. Instructor Voss will inspect every desk.", "早上好！今天是检查日。沃斯督导将检查每一张课桌。"), 6f, false, 0.6f);
             Authority(L("Sit straight. A short lesson first. I will be asking questions.", "坐直。先上一小段课。我会提问。"), 5f, false, 0.6f);
             Thought(L("I left it behind the panel last night.\n", "昨晚我把它藏在挡板后面了。\n") + Rule(L("Get it back", "把它拿回来")) + L(" before he gets to my desk.", "，赶在他检查到我的课桌之前。"), 6f, false, 0.6f);
@@ -143,24 +149,24 @@ namespace PhoneGame
             phone.hasPhone = true;
             gotPhone = true;
             nextCall = Random.Range(callInterval.x, callInterval.y) * 0.5f;
-            Thought(L("Still here. Sit up ", "还在。按 ") + Rule(L("[Space]", "[空格]")) + L(", ", " 坐直，") + Rule(L("HOLD RIGHT MOUSE", "按住右键")) + L(" when he isn't looking.", " 看手机，趁他没看的时候。"), 7f, true);
+            Thought(L("Still here. Sit up ", "还在。按 ") + Rule(L("[Space]", "[空格]")) + L(", ", " 坐直，") + Rule(L("HOLD RIGHT MOUSE", "按住右键")) + L(" when he isn't looking.", "看手机——趁他没在看。"), 7f, true);
             StartCoroutine(Messages());
         }
 
         IEnumerator Messages()
         {
-            yield return new WaitForSeconds(2f);
+            yield return Wait(2f);
             phone.Receive("Triangle", L("inspection today. he checks every desk. every single one.", "今天查课桌。他每张都查。每一张。"));
-            yield return new WaitForSeconds(1.5f);
+            yield return Wait(1.5f);
             phone.Receive("Triangle", L("before he gets to you: look at the last photo. the one we never told you about.", "他查到你之前：看最后一张照片。我们一直没告诉你的那张。"));
-            StartCoroutine(Reminder(L("Triangle said: ", "三角形说：") + Rule(L("Photos - the last photo", "相册 - 最后一张照片")) + L(".", "。"), () => phone.OldPhotoFound || inspecting || ended, 34f));
+            StartCoroutine(Reminder(L("Triangle said: ", "三角说：") + Rule(L("Photos - the last photo", "相册 - 最后一张照片")) + L(".", "。"), () => phone.OldPhotoFound || inspecting || ended, 34f));
             while (!phone.OldPhotoFound && !inspecting && !ended) yield return null;
             if (ended || inspecting) yield break;
             Thought(L("1979. Back row, by the window. ", "1979 年。最后一排，靠窗。") + Rule(L("My seat.", "我的座位。")) + L("\nIn pencil: VOSS. He sat here.", "\n铅笔写着：沃斯。他坐过这里。"), 6f, true, 0.5f);
             phone.Receive("Triangle", L("he had this phone once. he gave it up. that's how he got to stay.", "这部手机他以前也有过。他交出去了。所以他才能留下来。"));
-            yield return new WaitForSeconds(2f);
+            yield return Wait(2f);
             phone.Receive("Triangle", L("he's starting. decide what you want it to be for.", "他开始了。想好你要拿它做什么。"));
-            yield return new WaitForSeconds(2f);
+            yield return Wait(2f);
             StartInspection();
         }
 
@@ -191,17 +197,24 @@ namespace PhoneGame
             if (all.Count > 0) order.Add(all[0]);
             if (all.Count > 2 && !order.Contains(all[all.Count / 2])) order.Add(all[all.Count / 2]);
             for (int k = Mathf.Max(0, near.Count - 2); k < near.Count; k++) if (!order.Contains(near[k])) order.Add(near[k]);
+            // every verdict matches something on that desk (put there now, so you can see it before he gets there)
             string[] verdicts =
             {
                 "Pencils. Two. Approved.",
                 "A drawing of a horse. Confiscated. ...It is a good horse.",
                 "Nothing. Good. Nothing is good.",
                 "A note that says 'help'. Is this a joke? Confiscated. Ha. Ha.",
-                "Approved.",
-                "Gum. Under the desk. Since 1986. Approved, historically.",
-                "An eraser. Whose eraser is this? ...Approved.",
-                "Approved. Thank you for your cooperation.",
             };
+            bool[] confiscated = { false, true, false, true };
+            if (order.Count > verdicts.Length) order.RemoveRange(verdicts.Length, order.Count - verdicts.Length);
+            for (int i = 0; i < order.Count; i++)
+            {
+                GameObject prop = verdictProps != null && i < verdictProps.Length ? verdictProps[i] : null;
+                if (prop == null || order[i] == null) continue;
+                Vector3 c = order[i].position;
+                prop.transform.position = new Vector3(c.x + (i % 2 == 0 ? -0.06f : 0.06f), 0.752f, c.z + 0.6f);
+                prop.SetActive(true);
+            }
             int v = 0;
             for (int i = 0; i < order.Count && !ended; i++)
             {
@@ -213,14 +226,17 @@ namespace PhoneGame
                 Vector3 stand = new Vector3(ax, 0f, s.position.z);
                 teacher.Approach(stand, s);
                 float t = 0f;
-                yield return new WaitForSeconds(0.3f);
+                yield return Wait(0.3f);
                 while (!teacher.HasArrived && t < 8f && !ended) { t += Time.deltaTime; yield return null; }
                 if (ended) yield break;
-                Authority(Loc.T(verdicts[v % verdicts.Length]), 3f, true, 0.2f);
-                v++;
+                Authority(Loc.T(verdicts[v % verdicts.Length]), 4.2f, true, 0.2f);
                 ambient.Play(AudioSynth.Creak(), 0.25f, 1.4f);
+                // a long silence after each verdict: time to think about what he just took (or didn't)
                 t = 0f;
-                while (t < 1.4f && !ended) { t += Time.deltaTime; yield return null; }
+                while (t < 3.6f && !ended) { t += GameSpeed.Dt; yield return null; }
+                // confiscated: he takes it with him
+                if (confiscated[v % confiscated.Length] && verdictProps != null && v < verdictProps.Length && verdictProps[v] != null) verdictProps[v].SetActive(false);
+                v++;
             }
             if (ended) yield break;
             yield return Choice();
@@ -259,7 +275,7 @@ namespace PhoneGame
             if (teacher == null || takePhoneStandPoint == null) yield break;
             teacher.Approach(takePhoneStandPoint.position, rig.transform);
             float t = 0f;
-            yield return new WaitForSeconds(0.3f);
+            yield return Wait(0.3f);
             while (!teacher.HasArrived && t < 8f) { t += Time.deltaTime; yield return null; }
         }
 
@@ -309,7 +325,7 @@ namespace PhoneGame
             });
             Thought(Rule(L("[LEFT MOUSE]", "[左键]")) + L(" select, then ", " 选择，然后 ") + Rule(L("HOLD LEFT MOUSE", "按住左键")) + L(" to send.", " 发送。"), 99f, true);
             StartCoroutine(WalkToYou());
-            yield return new WaitForSeconds(1.5f);
+            yield return Wait(1.5f);
             Authority(L("...What are you doing.", "……你在干什么。"), 4f, true);
             float t = 0f;
             bool said = false;
@@ -320,22 +336,22 @@ namespace PhoneGame
                 yield return null;
             }
             ClearLine();
-            yield return new WaitForSeconds(1.2f);
+            yield return Wait(0.6f);
             yield return LightsUp();
-            yield return new WaitForSeconds(4f);   // let the chord ring out
-            StudentSay("CLASSMATE", L("...Seat thirty-one.", "……三十一号。"), 3.5f);
-            StudentSay("CLASSMATE", L("It's open. The stairs.", "开着。楼梯。"), 3.5f);
+            yield return Wait(2.6f);   // let the chord ring out
+            StudentSay("CLASSMATE", L("...Seat thirty-one.", "……三十一号。"), 2.2f, false, 0.1f);
+            StudentSay("CLASSMATE", L("It's open. The stairs.", "开着。楼梯。"), 2.2f, false, 0.1f);
             yield return WaitIdle();
-            Authority("...", 3f);
+            Authority("...", 1.8f, false, 0.1f);
             yield return WaitIdle();
             phone.forceRaise = false;
             if (teacher != null) teacher.WalkToAndFace(teacher.boardSpot, teacher.boardFacingYaw);
-            Authority(L("Page forty. Read quietly.", "第四十页。安静阅读。"), 4.5f);
+            Authority(L("Page forty. Read quietly.", "第四十页。安静阅读。"), 3f, false, 0.1f);
             yield return WaitIdle();
-            Thought(L("He turned to the board.\nHe isn't looking. ", "他转向了黑板。\n他没在看。") + Rule(L("He's letting us go.", "他在放我们走。")), 6f);
+            Thought(L("He turned to the board.\nHe isn't looking. ", "他转向了黑板。\n他没在看。") + Rule(L("He's letting us go.", "他在放我们走。")), 4f, false, 0.1f);
             yield return WaitIdle();
             ambient.Play(AudioSynth.Glitch(), 0.5f);
-            PA(L("<color=#7a1d16>...N0thing happened t0day. Thank y0u.</color>", "<color=#7a1d16>……今天什么都没发生。谢谢。</color>"), 5f);
+            PA(L("<color=#7a1d16>...N0thing happened t0day. Thank y0u.</color>", "<color=#7a1d16>……今天什么都没发生。谢谢。</color>"), 3.5f);
             yield return WaitIdle();
             GameFlow.endingChoice = 2;
             if (basementSeat != null) yield return Basement();
@@ -348,8 +364,10 @@ namespace PhoneGame
             yield return Fade(0f, 1f, 1.6f);
             caption.text = L("THAT AFTERNOON.\n\nTHE ROOM AT THE BOTTOM OF THE STAIRS.", "那天下午。\n\n楼梯底下的房间。");
             phone.forceRaise = false;
-            phone.hasPhone = false;
+            phone.hasPhone = true;      // down here you can use it - everyone does
+            phone.allowRaise = true;
             rig.SitAt(basementSeat.position, basementSeat.eulerAngles.y);
+            PrepareHeads();
             rig.BackToSeat();
             ambient.droneVolume = 0.03f;
             ambient.ventVolume = 0.02f;
@@ -359,26 +377,31 @@ namespace PhoneGame
             voices.spatialBlend = 0f;
             voices.volume = 0.35f;
             voices.Play();
-            yield return new WaitForSeconds(3f);
+            yield return Wait(2f);
             caption.text = "";
-            yield return Fade(1f, 0f, 1.8f);
+            yield return Fade(1f, 0f, 1.4f);
 
-            StudentSay("TRIANGLE", L("Seat thirty-one! Sit. ...Told you. After the bell.", "三十一号！坐。……我说过的。下课铃之后。"), 4.5f);
-            StudentSay("HUMS WHEN SCARED", L("You came. I'm not humming - did you notice?", "你来了。我没在哼歌——你发现了吗？"), 4.5f);
-            StudentSay("NEVER BLINKS", L("Still can't sleep. But it's better down here.", "还是睡不着。但在这下面好多了。"), 4.5f);
-            StudentSay("LENT ME AN ERASER", L("Say anything. Out loud. Nobody's writing it down.", "随便说什么。大声说。没人在记。"), 4.5f);
+            StudentSay("TRIANGLE", L("Seat thirty-one! Sit. ...Told you. After the bell.", "三十一号！坐。……我说过的。下课铃之后。"), 3.2f, false, 0.15f);
+            StudentSay("HUMS WHEN SCARED", L("You came. I'm not humming - did you notice?", "你来了。我没在哼歌——你发现了吗？"), 3.2f, false, 0.15f);
+            Coroutine chat = StartCoroutine(BasementChat());
+            StudentSay("NEVER BLINKS", L("Still can't sleep. But it's better down here.", "还是睡不着。但在这下面好多了。"), 3.2f, false, 0.15f);
+            StudentSay("LENT ME AN ERASER", L("Say anything. Out loud. Nobody's writing it down.", "随便说什么。大声说。没人在记。"), 3.2f, false, 0.15f);
             yield return WaitIdle();
-            Thought(L("Nobody is whispering. ", "没有人在小声说话。") + Rule(L("Nobody looks at the ceiling.", "没有人抬头看天花板。")), 4.5f);
+            Thought(L("Nobody is whispering. ", "没有人在小声说话。") + Rule(L("Nobody looks at the ceiling.", "没有人抬头看天花板。")) +
+                    L("\nEveryone's phone is out. ", "\n每个人都拿着手机。") + Rule(L("Mine too: HOLD RIGHT MOUSE.", "我的也可以：按住鼠标右键。")), 5f, false, 0.15f);
             yield return WaitIdle();
+            yield return Wait(6f);   // time to read the group chat
 
             // someone at the door
             if (vossInDoorway != null) vossInDoorway.SetActive(true);
             ambient.Play(AudioSynth.Creak(), 0.5f, 0.8f);
+            if (chat != null) StopCoroutine(chat);
+            TurnHeads(true);   // slowly, one after another, everyone turns to the door
             for (float k = 0f; k < 1f; k += Time.deltaTime / 1.2f) { voices.volume = Mathf.Lerp(0.35f, 0.03f, k); yield return null; }
             Thought(L("The doorway. ", "门口。") + Rule(L("Instructor Voss.", "沃斯督导。")) + L("\nEveryone stops talking.", "\n所有人都不说话了。"), 4.5f, true);
-            yield return new WaitForSeconds(4.5f);
+            yield return Wait(4.5f);
             Authority("...", 3f);
-            yield return new WaitForSeconds(3.2f);
+            yield return Wait(3.2f);
             // he steps back onto the landing and closes the door - from the outside
             Vector3 v0 = vossInDoorway != null ? vossInDoorway.transform.position : Vector3.zero;
             for (float k = 0f; k < 1f; k += Time.deltaTime / 0.8f)
@@ -400,10 +423,103 @@ namespace PhoneGame
             if (vossInDoorway != null) vossInDoorway.SetActive(false);
             ambient.Play(AudioSynth.Click(), 0.6f, 0.6f);
             Thought(L("He closed the door.\n", "他关上了门。\n") + Rule(L("From the outside.", "从外面。")), 5f, true);
-            yield return new WaitForSeconds(2.5f);
+            yield return Wait(1.2f);
+            TurnHeads(false);   // ...and slowly, back to each other
+            yield return Wait(1.6f);
             for (float k = 0f; k < 1f; k += Time.deltaTime / 2f) { voices.volume = Mathf.Lerp(0.03f, 0.4f, k); yield return null; }
             StudentSay("TRIANGLE", L("...So. Where were we?", "……所以。我们刚说到哪了？"), 3.5f);
+            phone.Receive("Never Blinks", L("did he just close it for us?", "他刚刚……是帮我们把门关上了吗？"));
+            yield return Wait(2f);
+            phone.Receive("Triangle", L("he sat in seat 31 once. maybe he remembers.", "他以前也坐过 31 号。也许他还记得。"));
             yield return WaitIdle();
+            yield return Wait(3f);
+        }
+
+        // ------------------------------------------------------------------ the basement: a group chat, heads that turn
+        IEnumerator BasementChat()
+        {
+            string[,] chat =
+            {
+                { "Bus 14", "first time typing without checking who's behind me" },
+                { "Don't Reply", "replying. for once." },
+                { "Hums When Scared", "la la la (that's me humming. on purpose)" },
+                { "Lent Me An Eraser", "welcome, 31. you still owe me an eraser btw" },
+                { "Never Blinks", "i blinked. nobody wrote it down" },
+                { "Triangle", "house rule down here: say it out loud or type it. both count." },
+            };
+            string[] zh =
+            {
+                "第一次打字不用先看身后有没有人",
+                "回复。就这一次。",
+                "啦啦啦（是我在哼歌。故意的）",
+                "欢迎你，31。对了你还欠我一块橡皮",
+                "我眨眼了。没人记下来",
+                "这下面的规矩：说出来，或者打出来。都算。",
+            };
+            for (int i = 0; i < zh.Length; i++)
+            {
+                yield return Wait(i == 0 ? 0.5f : Random.Range(1.6f, 2.6f));
+                phone.Receive(chat[i, 0], L(chat[i, 1], zh[i]));
+            }
+        }
+
+        Transform[] heads;
+        Quaternion[] headRest;
+        Coroutine[] headTurns;
+
+        /// <summary>Gathers each basement student's head parts under a neck pivot, so the head can turn on its own.</summary>
+        void PrepareHeads()
+        {
+            if (basementStudents == null) return;
+            heads = new Transform[basementStudents.Length];
+            headRest = new Quaternion[basementStudents.Length];
+            headTurns = new Coroutine[basementStudents.Length];
+            for (int i = 0; i < basementStudents.Length; i++)
+            {
+                Transform f = basementStudents[i];
+                if (f == null) continue;
+                Transform look = f.Find("Chibi");
+                if (look == null) continue;
+                Transform pivot = new GameObject("HeadPivot").transform;
+                pivot.SetParent(look, false);
+                pivot.localPosition = new Vector3(0f, 1.13f, 0f);
+                List<Transform> parts = new List<Transform>();
+                foreach (Transform c in look) if (c != pivot && c.localPosition.y >= 1.13f) parts.Add(c);
+                foreach (Transform c in parts) c.SetParent(pivot, true);
+                heads[i] = pivot;
+                headRest[i] = pivot.localRotation;
+            }
+        }
+
+        void TurnHeads(bool toDoor)
+        {
+            if (heads == null) return;
+            for (int i = 0; i < heads.Length; i++)
+            {
+                if (heads[i] == null) continue;
+                Quaternion target = headRest[i];
+                if (toDoor && vossInDoorway != null)
+                {
+                    Vector3 to = vossInDoorway.transform.position - heads[i].position; to.y = 0f;
+                    Vector3 local = heads[i].parent.InverseTransformDirection(to);
+                    float yaw = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg, -80f, 80f);
+                    target = headRest[i] * Quaternion.Euler(-4f, yaw, 0f);
+                }
+                if (headTurns[i] != null) StopCoroutine(headTurns[i]);
+                headTurns[i] = StartCoroutine(TurnHead(heads[i], target, (toDoor ? 0.25f : 0.15f) * i + Random.Range(0f, 0.2f), toDoor ? 1.6f : 1.9f));
+            }
+        }
+
+        static IEnumerator TurnHead(Transform h, Quaternion to, float delay, float seconds)
+        {
+            yield return new WaitForSeconds(delay);
+            Quaternion from = h.localRotation;
+            for (float k = 0f; k < 1f; k += Time.deltaTime / seconds)
+            {
+                h.localRotation = Quaternion.Slerp(from, to, k * k * (3f - 2f * k));
+                yield return null;
+            }
+            h.localRotation = to;
         }
 
         /// <summary>
@@ -420,7 +536,7 @@ namespace PhoneGame
             ambient.droneVolume = 0f;
             ambient.ventVolume = 0f;
             AudioSource swell = OneShot2D(AudioSynth.Swell(), 0.6f, 1f);
-            yield return new WaitForSeconds(1.2f);
+            yield return Wait(1.2f);
 
             float[] scale = { 1f, 1.2f, 1.3333f, 1.5f, 1.8f, 2f, 2.4f, 2.6667f, 3f, 3.6f, 4f };   // minor pentatonic, going up (free, but lonely)
             Shader sh = Shader.Find("Universal Render Pipeline/Unlit");
@@ -448,9 +564,9 @@ namespace PhoneGame
                 ambient.Play(AudioSynth.Vibrate(), 0.15f, Random.Range(0.9f, 1.15f));
                 // starts slow, then the whole room catches
                 float wait = Mathf.Lerp(0.6f, 0.13f, Mathf.Clamp01(i / 7f));
-                yield return new WaitForSeconds(wait);
+                yield return Wait(wait);
             }
-            yield return new WaitForSeconds(0.25f);
+            yield return Wait(0.25f);
             OneShot2D(AudioSynth.Bloom(), 0.9f, 1f);
             if (swell != null) StartCoroutine(FadeOut(swell, 2.5f));
             dangerFx.level = 0f;
@@ -574,7 +690,7 @@ namespace PhoneGame
                     yield return WaitIdle();
                     if (i == 4 && !pa) { pa = true; PA(L("Reminder: smiling during inspection is encouraged, but not required. It is encouraged.", "提醒：检查期间鼓励微笑，但不强制。是鼓励。")); yield return WaitIdle(); }
                     float t = 0f;
-                    while (t < 3f && !ended) { if (DialogueIdle) t += Time.deltaTime; yield return null; }
+                    while (t < 3f && !ended) { if (DialogueIdle) t += GameSpeed.Dt; yield return null; }
                 }
                 yield return null;
             }
@@ -585,7 +701,7 @@ namespace PhoneGame
             if (!gotPhone || inspecting || teacher == null) return;
             if (!calling)
             {
-                if (nextCall > 0f) { nextCall -= Time.deltaTime; if (nextCall <= 0f) StartCall(); }
+                if (nextCall > 0f) { nextCall -= GameSpeed.Dt; if (nextCall <= 0f) StartCall(); }
                 return;
             }
             callTimer -= Time.deltaTime;

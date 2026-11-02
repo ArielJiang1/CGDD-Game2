@@ -18,19 +18,23 @@ namespace PhoneGame
         static readonly Color Red = new Color(0.86f, 0.18f, 0.14f);
         static readonly Color Warm = new Color(1f, 0.85f, 0.55f);
 
-        static readonly string[] WinHead = { "SOMEONE ANSWERED", "THE STAIRS GO DOWN", "SOMEONE FLASHED BACK" };
+        static readonly string[] WinHead = { "SOMEONE ANSWERED", "THE STAIRS GO DOWN", "SOMEONE FLASHED BACK", "SAY \"CLEARVIEW!\"", "THE LESSON NEVER ENDED" };
         static readonly string[] WinBody =
         {
             "The one in front of you is one of them.\nAfter the bell: the stairwell.",
             "A message, passed hand to hand.\nThe door marked STAFF was never locked.\nIt was only watched.",
             "Three lights across the yard.\nOther dorms. Other rooms. Other phones.\nYou are not the first. You are not the only.",
+            "Twenty reports. Three reporters.\nA live screen with nobody on it.\nAnd a photo from April 1967.",
+            "Five days in 1967, meant to end with the truth.\nClearview kept the first four days.\nTomorrow is the fifth.",
         };
-        static readonly string[] CaughtHead = { "CAUGHT", "CONFISCATED", "LIGHTS OUT", "INSPECTED" };
+        static readonly string[] CaughtHead = { "CAUGHT", "CONFISCATED", "LIGHTS OUT", "DEVELOPED", "SHHH", "INSPECTED" };
         static readonly string[] CaughtBody =
         {
             "Three warnings.\nThe phone is his now.",
             "The Lunch Monitor files a report.\nThe stairs stay closed. Lunch continues.",
             "He took it with the flashlight still on your face.\nSweet dreams.",
+            "Report number twenty-one.\nYour citizen card comes back with a red X.\nNow you report, too.",
+            "The librarian stamps your hand: RETURNED.\nThe book goes back on the repair shelf.",
             "One item found.\n\"You'll thank me. Just like I was.\"",
         };
 

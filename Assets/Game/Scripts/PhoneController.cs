@@ -55,10 +55,14 @@ namespace PhoneGame
     ///   MESSAGES     : new messages are read only while you look at them. Replies / forwards: A / D choose,
     ///                  Left Mouse select, then HOLD Left Mouse to type and send.
     ///   CONTACTS     : A / D browse names left by everyone who had this phone before you.
+    ///   CAMERA       : the screen becomes a viewfinder (you see the room through it). Aim the middle of the screen,
+    ///                  Left Mouse = shutter (a click anyone close can hear), A / D = flash on / off. Photos go to PHOTOS.
+    ///   SEARCH       : the school's catalogue. A / D choose a word you have READ somewhere, HOLD Left Mouse to search.
+    ///   SILENT       : the little bell top right. M switches it (only from The Archive on; before, nobody explains it).
     /// </summary>
     public class PhoneController : MonoBehaviour
     {
-        public enum PhoneScreen { Lock, Booting, Home, AppLock, AppLoading, Photos, Messages, Contacts }
+        public enum PhoneScreen { Lock, Booting, Home, AppLock, AppLoading, Photos, Messages, Contacts, Camera, Search }
         public const int AppPhotos = 0, AppCamera = 1, AppContacts = 2, AppMessages = 3, AppSearch = 4;
 
         [Header("Codes & timing")]
@@ -99,6 +103,32 @@ namespace PhoneGame
         [Tooltip("Shows the 1979 photo (The Inspector).")]
         public bool showOldPhoto;
 
+        [Header("Camera (Picture Day)")]
+        [Tooltip("The flash starts ON - everyone sees a flash.")]
+        public bool cameraFlash = true;
+        [Tooltip("Picture Day: the flash switches itself back ON every time the phone comes out.")]
+        public bool flashOnEveryRaise;
+        [Tooltip("Called on every shutter press: the target in frame (or null) and whether the flash fired.")]
+        public System.Action<PhotoTarget, bool> onShutter;
+
+        [Header("Silent mode (the little bell on the screen; only explained in The Archive)")]
+        [Tooltip("The M key works (Chapter 5). Before that the bell is just a small icon nobody explains.")]
+        public bool silentAvailable;
+        public bool silent;
+        [Tooltip("The old switch is unreliable: each time the phone comes out, silent mode may quietly switch itself off.")]
+        [Range(0f, 1f)] public float silentFailChance;
+        /// <summary>True when the last raise quietly switched silent mode off (the level reads and clears it).</summary>
+        [HideInInspector] public bool silentJustFailed;
+        public System.Action<bool> onSilentChanged;
+
+        [Header("Search (The Archive)")]
+        [Tooltip("Words the player has read somewhere (posters, spines, stamps). Search only knows these.")]
+        public List<string> searchWords = new List<string>();
+        public float searchSeconds = 1.4f;
+        /// <summary>Given a word (English), returns the result text to show. Set by the level.</summary>
+        public System.Func<string, string> searchFunc;
+        public System.Action<string> onSearched;
+
         [Header("Screen glow (Lights Out)")]
         public Light glowLight;
         public float glowIntensity = 1.6f;
@@ -137,6 +167,18 @@ namespace PhoneGame
         public bool OldPhotoFound { get; private set; }
         public bool FirstContactSeen { get; private set; }
         public bool RaisedOnce { get; private set; }
+        public int PhotosTaken { get { return taken.Count; } }
+        public PhotoTarget Aimed { get { return aimed; } }
+        public bool LastSearchDone { get; private set; }
+
+        /// <summary>Adds a word the Search app can look up. Returns false if it was already known.</summary>
+        public bool AddSearchWord(string w)
+        {
+            if (string.IsNullOrEmpty(w) || searchWords.Contains(w)) return false;
+            searchWords.Add(w);
+            return true;
+        }
+
         public float BootSecondsElapsed { get { return Screen == PhoneScreen.Booting ? loadT : 0f; } }
         public float AppLoadingElapsed { get { return Screen == PhoneScreen.AppLoading ? loadT : 0f; } }
         public PhoneTask Task { get { return task; } }
@@ -188,6 +230,23 @@ namespace PhoneGame
         int selectedApp, openApp, photoIndex, contactIndex, choice;
         readonly List<PhoneMsg> msgs = new List<PhoneMsg>();
         PhoneTask task;
+        // camera + search
+        readonly List<string> taken = new List<string>();
+        PhotoTarget[] targets;
+        PhotoTarget aimed;
+        float shutterFlash, searchProgress;
+        bool searching;
+        int searchIndex;
+        string searchResult = "";
+        AudioSource sfx;
+        GameObject cameraRoot, searchRoot, snapshot;
+        Text camLabel, camFlashText, camCount, snapLabel, searchQuery, searchResultText, searchHeader;
+        RectTransform searchFill, screenRT;
+        GameObject searchBarRoot;
+        Image screenBg, crackImg, panelBg, whiteFlash;
+        Image[] reticle;
+        Image bellBody, bellClapper, bellSlash;
+        Text bellText;
 
         // UI
         RectTransform panel;
@@ -229,12 +288,16 @@ namespace PhoneGame
             "Lights out. 21:00. Exactly.",
             "1979. Back row, by the window. Same seat.\nIn pencil, under the photo: VOSS.",
         };
-        int PhotoCount { get { return showOldPhoto ? 6 : 5; } }
+        int BasePhotos { get { return showOldPhoto ? 6 : 5; } }
+        int PhotoCount { get { return BasePhotos + taken.Count; } }
 
         Canvas phoneCanvas;
 
         void Awake()
         {
+            sfx = gameObject.AddComponent<AudioSource>();
+            sfx.playOnAwake = false;
+            sfx.spatialBlend = 0f;
             BuildUI();
             Screen = PhoneScreen.Lock;
             SharpenText();
@@ -262,7 +325,8 @@ namespace PhoneGame
             if (notifFrom != null && hasPhone)
             {
                 notifFrom.text = Loc.T(from).ToUpper();
-                notifText.text = text.Length > 44 ? text.Substring(0, 42) + "..." : text;
+                int maxChars = Loc.Chinese ? 20 : 44;
+                notifText.text = text.Length > maxChars ? text.Substring(0, maxChars - 2) + "..." : text;
                 notifT = 4.5f;
             }
             if (onMessageArrived != null) onMessageArrived();
@@ -291,6 +355,8 @@ namespace PhoneGame
             if (app >= 0 && app < appUnlocked.Length) appUnlocked[app] = true;
             openApp = app;
             Screen = app == AppMessages ? PhoneScreen.Messages : (app == AppContacts ? PhoneScreen.Contacts : (app == AppPhotos ? PhoneScreen.Photos : PhoneScreen.Home));
+            if (app == AppCamera) EnterCamera();
+            if (app == AppSearch) Screen = PhoneScreen.Search;
         }
 
         /// <summary>A strike: the phone jolts and flashes red.</summary>
@@ -299,7 +365,10 @@ namespace PhoneGame
         // ------------------------------------------------------------------ update
         void Update()
         {
+            bool wasDown = raise <= 0.001f;
             held = forceRaise || (hasPhone && allowRaise && GameInput.RightHeld());
+            if (held && wasDown && flashOnEveryRaise) cameraFlash = true;   // the old phone forgets: flash back on
+            if (held && wasDown && silent && silentFailChance > 0f && Random.value < silentFailChance) { silent = false; silentJustFailed = true; }   // no notice: only the bell shows it
             float speed = held ? 1f / Mathf.Max(0.01f, raiseSeconds) : 1f / Mathf.Max(0.01f, lowerSeconds);
             raise = Mathf.MoveTowards(raise, held ? 1f : 0f, speed * Time.deltaTime);
             if (raise > 0.5f) RaisedOnce = true;
@@ -343,7 +412,13 @@ namespace PhoneGame
 
         void Tick()
         {
-            float dt = Time.deltaTime;
+            float dt = GameSpeed.Dt;   // loading, reading, typing and searching all run at story speed
+            if (silentAvailable && GameInput.MuteDown())
+            {
+                silent = !silent;
+                Notice(silent ? Loc.L("Silent mode ON.", "静音模式：开。") : Loc.L("Silent mode OFF.", "静音模式：关。"));
+                if (onSilentChanged != null) onSilentChanged(silent);
+            }
             switch (Screen)
             {
                 case PhoneScreen.Lock:
@@ -407,6 +482,105 @@ namespace PhoneGame
                 case PhoneScreen.Messages:
                     TickMessages(dt);
                     break;
+
+                case PhoneScreen.Camera:
+                    if (GameInput.BackDown()) { Screen = PhoneScreen.Home; break; }
+                    if (GameInput.LeftKeyDown() || GameInput.RightKeyDown()) { cameraFlash = !cameraFlash; Notice(cameraFlash ? Loc.L("Flash ON.", "闪光灯：开。") : Loc.L("Flash OFF.", "闪光灯：关。")); }
+                    if (GameInput.LeftDown()) Shutter();
+                    break;
+
+                case PhoneScreen.Search:
+                    TickSearch(dt);
+                    break;
+            }
+        }
+
+        // ------------------------------------------------------------------ camera
+        void EnterCamera()
+        {
+            Screen = PhoneScreen.Camera;
+            targets = FindObjectsByType<PhotoTarget>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        }
+
+        /// <summary>The ray through the middle of the phone's screen (the viewfinder).</summary>
+        Ray AimRay()
+        {
+            Camera cam = Camera.main;
+            if (cam == null || screenRT == null) return new Ray(transform.position, transform.forward);
+            Vector3 world = screenRT.TransformPoint(screenRT.rect.center);
+            Vector2 sp = RectTransformUtility.WorldToScreenPoint(null, world);
+            return cam.ScreenPointToRay(sp);
+        }
+
+        PhotoTarget FindAimed()
+        {
+            if (targets == null) return null;
+            Ray ray = AimRay();
+            PhotoTarget best = null;
+            float bestA = 999f;
+            foreach (PhotoTarget t in targets)
+            {
+                if (t == null || !t.isActiveAndEnabled) continue;
+                Vector3 to = t.transform.position - ray.origin;
+                float d = to.magnitude;
+                if (d > t.range || d < 0.1f) continue;
+                float a = Vector3.Angle(ray.direction, to);
+                if (a > 9f || a >= bestA) continue;
+                bool blocked = false;
+                foreach (RaycastHit h in Physics.RaycastAll(ray.origin, to / d, d - 0.15f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (h.transform.IsChildOf(transform) || h.transform.IsChildOf(t.transform)) continue;
+                    blocked = true;
+                    break;
+                }
+                if (blocked) continue;
+                best = t;
+                bestA = a;
+            }
+            return best;
+        }
+
+        void Shutter()
+        {
+            sfx.PlayOneShot(AudioSynth.Click(), 0.9f);
+            if (cameraFlash) { shutterFlash = 1f; glowBoost = 1f; }
+            PhotoTarget t = aimed;
+            if (t != null && !t.taken)
+            {
+                t.taken = true;
+                taken.Add(t.label);
+                Notice(Loc.L("Saved to Photos.", "已存入相册。"));
+            }
+            else if (t != null) Notice(Loc.L("Already have that one.", "这张已经拍过了。"));
+            else Notice(Loc.L("Nothing worth keeping in frame.", "取景框里没有值得留下的东西。"));
+            if (onShutter != null) onShutter(t, cameraFlash);
+        }
+
+        // ------------------------------------------------------------------ search
+        void TickSearch(float dt)
+        {
+            if (GameInput.BackDown() && !searching) { Screen = PhoneScreen.Home; return; }
+            int n = searchWords.Count;
+            if (!searching)
+            {
+                if (n > 0)
+                {
+                    if (GameInput.LeftKeyDown()) { searchIndex = (searchIndex + n - 1) % n; }
+                    if (GameInput.RightKeyDown()) { searchIndex = (searchIndex + 1) % n; }
+                    if (GameInput.LeftDown()) { searching = true; searchProgress = 0f; searchResult = ""; LastSearchDone = false; }
+                }
+                return;
+            }
+            if (GameInput.LeftHeld()) searchProgress = Mathf.Min(1f, searchProgress + dt / Mathf.Max(0.1f, searchSeconds));
+            if (searchProgress >= 1f)
+            {
+                searching = false;
+                string w = searchWords[Mathf.Clamp(searchIndex, 0, n - 1)];
+                searchResult = searchFunc != null ? searchFunc(w) : null;
+                if (string.IsNullOrEmpty(searchResult)) searchResult = Loc.L("0 results.", "0 条结果。");
+                LastSearchDone = true;
+                sfx.PlayOneShot(AudioSynth.Ping(), 0.4f);
+                if (onSearched != null) onSearched(w);
             }
         }
 
@@ -416,6 +590,8 @@ namespace PhoneGame
             if (openApp == AppPhotos) { Screen = PhoneScreen.Photos; photoIndex = 0; }
             else if (openApp == AppContacts) { Screen = PhoneScreen.Contacts; contactIndex = 0; }
             else if (openApp == AppMessages) Screen = PhoneScreen.Messages;
+            else if (openApp == AppCamera) EnterCamera();
+            else if (openApp == AppSearch) { Screen = PhoneScreen.Search; searchIndex = Mathf.Max(0, searchWords.Count - 1); }
             else { Screen = PhoneScreen.Home; Notice(Loc.L("This app doesn't open. Yet.", "这个 App 打不开。还打不开。")); }
         }
 
@@ -494,6 +670,15 @@ namespace PhoneGame
             photosRoot.SetActive(Screen == PhoneScreen.Photos);
             msgRoot.SetActive(Screen == PhoneScreen.Messages);
             contactsRoot.SetActive(Screen == PhoneScreen.Contacts);
+            bool cam = Screen == PhoneScreen.Camera;
+            cameraRoot.SetActive(cam);
+            searchRoot.SetActive(Screen == PhoneScreen.Search);
+            // the camera turns the screen into glass: you see the room through it
+            screenBg.color = cam ? new Color(1f, 1f, 1f, 0.03f) : ScreenColor;
+            panelBg.color = cam ? new Color(0f, 0f, 0f, 0f) : new Color(0.05f, 0.05f, 0.06f);
+            crackImg.enabled = !cam;
+            if (shutterFlash > 0f) shutterFlash = Mathf.Max(0f, shutterFlash - Time.deltaTime * 2.5f);
+            whiteFlash.color = new Color(1f, 1f, 1f, shutterFlash * 0.9f);
 
             string hint = "";
             if (isLock)
@@ -505,6 +690,7 @@ namespace PhoneGame
                 lockHint.text = Screen == PhoneScreen.Lock ? Loc.T(phoneHint) : HintFor(openApp);
                 lockNoteRoot.SetActive(Screen == PhoneScreen.Lock);
                 lockNote.text = LockNotificationText();
+                UIFactory.FitFont(lockNote, lockNote.text);
                 hint = Screen == PhoneScreen.Lock ? Loc.L("Number keys: type    Backspace: delete", "数字键：输入    Backspace：删除") : Loc.L("Number keys: type    Q: back", "数字键：输入    Q：返回");
             }
             else if (isLoad)
@@ -533,8 +719,17 @@ namespace PhoneGame
             }
             else if (Screen == PhoneScreen.Photos)
             {
-                for (int i = 0; i < photos.Length; i++) photos[i].SetActive(i == photoIndex);
-                photoCaption.text = photoIndex < photoCaptions.Length ? Loc.T(photoCaptions[photoIndex]) : "";
+                bool snap = photoIndex >= BasePhotos;
+                for (int i = 0; i < photos.Length; i++) photos[i].SetActive(!snap && i == photoIndex);
+                snapshot.SetActive(snap);
+                if (snap)
+                {
+                    string label = Loc.T(taken[Mathf.Clamp(photoIndex - BasePhotos, 0, taken.Count - 1)]);
+                    snapLabel.text = label;
+                    photoCaption.text = Loc.L("Today. ", "今天。") + label;
+                }
+                else photoCaption.text = photoIndex < photoCaptions.Length ? Loc.T(photoCaptions[photoIndex]) : "";
+                UIFactory.FitFont(photoCaption, photoCaption.text);
                 photoCounter.text = (photoIndex + 1) + " / " + PhotoCount;
                 hint = Loc.L("A / D: browse    Q: back", "A / D：翻看    Q：返回");
             }
@@ -546,6 +741,8 @@ namespace PhoneGame
                     contactName.text = Loc.T(c.name);
                     contactYear.text = Loc.L("saved in " + c.year, "存于 " + c.year + " 年");
                     contactNote.text = Loc.T(c.note);
+                    UIFactory.FitFont(contactNote, contactNote.text);
+                    UIFactory.FitFont(contactName, contactName.text, 14);
                     contactCounter.text = (contactIndex + 1) + " / " + contacts.Count;
                 }
                 hint = Loc.L("A / D: browse    Q: back", "A / D：翻看    Q：返回");
@@ -554,8 +751,39 @@ namespace PhoneGame
             {
                 hint = RefreshMessages();
             }
+            else if (cam)
+            {
+                if (IsUp) aimed = FindAimed();
+                bool has = aimed != null;
+                camLabel.text = has ? (aimed.taken ? Loc.L("(already taken)  ", "（已拍过）  ") : "") + Loc.T(aimed.label) : Loc.L("...", "……");
+                Color rc = has && !aimed.taken ? new Color(1f, 0.85f, 0.35f) : new Color(1f, 1f, 1f, 0.7f);
+                foreach (Image r in reticle) r.color = rc;
+                camFlashText.text = cameraFlash ? Loc.L("FLASH  ON", "闪光灯  开") : Loc.L("FLASH  OFF", "闪光灯  关");
+                camFlashText.color = cameraFlash ? new Color(1f, 0.55f, 0.35f) : new Color(0.8f, 0.85f, 0.8f);
+                camCount.text = Loc.L(taken.Count + " taken", "已拍 " + taken.Count + " 张");
+                hint = Loc.L("Aim the middle    Left Mouse: shutter    A / D: flash    Q: back", "对准中间    左键：拍照    A / D：闪光灯    Q：返回");
+            }
+            else if (Screen == PhoneScreen.Search)
+            {
+                int n = searchWords.Count;
+                string w = n > 0 ? Loc.T(searchWords[Mathf.Clamp(searchIndex, 0, n - 1)]) : Loc.L("(no words yet - read something)", "（还没有搜索词——先去读点什么）");
+                searchQuery.text = n > 1 ? "<  " + w + "  >" : w;
+                searchBarRoot.SetActive(searching);
+                searchFill.anchorMax = new Vector2(searchProgress, 1f);
+                searchResultText.text = searching ? Loc.L("searching...", "搜索中……") : searchResult;
+                UIFactory.FitFont(searchResultText, searchResultText.text);
+                searchHeader.text = AppName(AppSearch) + Loc.L("   (" + n + " words)", "   （" + n + " 个词）");
+                hint = n == 0 ? Loc.L("Q: back", "Q：返回") : (searching ? Loc.L("Keep HOLDING Left Mouse", "按住鼠标左键别松") : Loc.L("A / D: word    HOLD Left Mouse: search    Q: back", "A / D：选词    按住左键：搜索    Q：返回"));
+            }
+            if (silentAvailable && noticeTimer <= 0f && !cam) hint = Loc.L("M: silent mode", "M：静音模式") + (string.IsNullOrEmpty(hint) ? "" : "    " + hint);
             footer.text = noticeTimer > 0f ? notice : hint;
-            footer.color = noticeTimer > 0f ? new Color(0.75f, 0.2f, 0.15f) : new Color(0.35f, 0.35f, 0.37f);
+            UIFactory.FitFont(footer, footer.text);
+            // the little bell, top right, on every screen
+            Color bell = silent ? new Color(0.75f, 0.2f, 0.15f) : (cam ? new Color(1f, 1f, 1f, 0.8f) : new Color(0.3f, 0.3f, 0.32f));
+            bellBody.color = bellClapper.color = bell;
+            bellSlash.enabled = silent;
+            bellText.text = silent ? Loc.L("SILENT", "静音") : "";
+            footer.color = noticeTimer > 0f ? (cam ? new Color(1f, 0.6f, 0.45f) : new Color(0.75f, 0.2f, 0.15f)) : (cam ? new Color(0.92f, 0.92f, 0.9f) : new Color(0.35f, 0.35f, 0.37f));
         }
 
         string LockNotificationText()
@@ -564,7 +792,8 @@ namespace PhoneGame
             {
                 if (m.mine || m.shown >= m.text.Length) continue;
                 int n = UnreadCount;
-                string preview = m.text.Length > 46 ? m.text.Substring(0, 46) + "..." : m.text;
+                int maxChars = Loc.Chinese ? 30 : 46;
+                string preview = m.text.Length > maxChars ? m.text.Substring(0, maxChars) + "..." : m.text;
                 return Loc.L(n + (n == 1 ? " new message\n" : " new messages\n"), n + " 条新信息\n") + Loc.T(m.from) + ": " + preview;
             }
             return Loc.T(lockNotification);
@@ -592,6 +821,7 @@ namespace PhoneGame
                 int shown = Mathf.FloorToInt(m.shown);
                 bool reading = !m.mine && shown < m.text.Length;
                 bubbleFrom[s].text = m.mine ? Loc.L("me", "我") : Loc.T(m.from);
+                UIFactory.FitFont(bubbleText[s], m.text + "_");   // sized by the whole message, so it never jumps while reading
                 bubbleText[s].text = (reading ? m.text.Substring(0, shown) + "_" : m.text);
                 bubbleBg[s].color = m.mine ? new Color(0.22f, 0.24f, 0.26f, 0.95f) : new Color(0f, 0f, 0f, 0.09f);
                 bubbleText[s].color = m.mine ? new Color(0.95f, 0.92f, 0.82f) : Ink;
@@ -610,12 +840,14 @@ namespace PhoneGame
                 taskHeader.text = Loc.T(task.header);
                 string opt = task.options != null && task.options.Length > 0 ? Loc.T(task.options[Mathf.Clamp(choice, 0, task.options.Length - 1)]) : "";
                 taskBody.text = "<  " + opt + "  >";
+                UIFactory.FitFont(taskBody, taskBody.text);
                 taskHelp.text = Loc.L("A / D: choose    Left Mouse: select", "A / D：选择    鼠标左键：确定");
                 return "";
             }
             string text = task.forward ? task.sendText : task.options[choice];
             taskHeader.text = task.forward ? Loc.L("To: ", "发给：") + Loc.T(task.options[choice]) : (string.IsNullOrEmpty(task.toLabel) ? Loc.L("Reply", "回复") : Loc.T(task.toLabel));
             int n = Mathf.FloorToInt(typeProgress * text.Length);
+            UIFactory.FitFont(taskBody, text + "_");
             taskBody.text = text.Substring(0, Mathf.Clamp(n, 0, text.Length)) + "_";
             typeFill.anchorMax = new Vector2(typeProgress, 1f);
             taskHelp.text = Loc.L("HOLD Left Mouse: type & send", "按住鼠标左键：输入并发送");
@@ -654,15 +886,22 @@ namespace PhoneGame
             panel = UIFactory.Rect("Phone", canvas.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
                                    new Vector2(0f, HiddenY), new Vector2(440f, 780f));
             BuildNotification(canvas.transform);
-            UIFactory.AddImage(panel, new Color(0.05f, 0.05f, 0.06f));
+            panelBg = UIFactory.AddImage(panel, new Color(0.05f, 0.05f, 0.06f));
+            // the bezel as four bars, so the camera can make the glass see-through and the frame stays
+            Color bz = new Color(0.05f, 0.05f, 0.06f);
+            UIFactory.AddImage(UIFactory.Rect("Bezel_T", panel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), Vector2.zero, new Vector2(0f, 18f)), bz);
+            UIFactory.AddImage(UIFactory.Rect("Bezel_B", panel, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, 18f)), bz);
+            UIFactory.AddImage(UIFactory.Rect("Bezel_L", panel, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(18f, 0f)), bz);
+            UIFactory.AddImage(UIFactory.Rect("Bezel_R", panel, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f), Vector2.zero, new Vector2(18f, 0f)), bz);
             RectTransform screen = UIFactory.Rect("Screen", panel, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-36f, -36f));
             screen.gameObject.AddComponent<RectMask2D>();   // nothing (the crack, long texts) draws outside the glass
-            UIFactory.AddImage(screen, ScreenColor);
+            screenBg = UIFactory.AddImage(screen, ScreenColor);
+            screenRT = screen;
 
             // a crack across the screen protector - someone else's damage
             RectTransform crack = UIFactory.Centered("Crack", screen, 40f, 150f, 380f, 2f);
             crack.localRotation = Quaternion.Euler(0f, 0f, 38f);
-            UIFactory.AddImage(crack, new Color(0f, 0f, 0f, 0.18f));
+            crackImg = UIFactory.AddImage(crack, new Color(0f, 0f, 0f, 0.18f));
 
             // --- passcode (phone lock + app lock)
             lockRoot = UIFactory.Stretch("Passcode", screen).gameObject;
@@ -722,6 +961,13 @@ namespace PhoneGame
             photos[3] = PhotoTriangle(frame);
             photos[4] = PhotoNight(frame);
             photos[5] = PhotoClass(frame, "Photo_Class1979", new Color(0.62f, 0.52f, 0.38f), new Color(0.3f, 0.22f, 0.15f), new Color(0.4f, 0.31f, 0.21f), Loc.L("VOSS", "沃斯"));
+            snapshot = UIFactory.Stretch("Photo_Snapshot", frame).gameObject;
+            Box(snapshot.transform, 0f, 0f, 368f, 320f, new Color(0.32f, 0.33f, 0.3f));
+            Box(snapshot.transform, 0f, 250f, 368f, 70f, new Color(0.22f, 0.22f, 0.2f));
+            Box(snapshot.transform, 84f, 60f, 200f, 150f, new Color(0.8f, 0.78f, 0.7f));
+            snapLabel = UIFactory.AddText(UIFactory.TopLeft("Label", snapshot.transform, 90f, 66f, 188f, 138f), "", 20, Ink, TextAnchor.MiddleCenter);
+            snapLabel.fontStyle = FontStyle.Bold;
+            snapshot.SetActive(false);
             photoCaption = UIFactory.AddText(UIFactory.TopLeft("Caption", photosRoot.transform, 18f, 375f, 368f, 140f), "", 18, Ink, TextAnchor.UpperLeft);
             photoCounter = UIFactory.AddText(UIFactory.TopLeft("Counter", photosRoot.transform, 18f, 8f, 368f, 30f), "", 16, Ink, TextAnchor.MiddleRight);
 
@@ -767,9 +1013,65 @@ namespace PhoneGame
             contactYear = UIFactory.AddText(UIFactory.TopLeft("Year", card, 10f, 186f, 348f, 28f), "", 16, new Color(0.45f, 0.3f, 0.2f), TextAnchor.MiddleCenter);
             contactNote = UIFactory.AddText(UIFactory.TopLeft("Note", card, 20f, 236f, 328f, 160f), "", 19, Ink, TextAnchor.UpperCenter);
 
+            // --- camera: a see-through viewfinder
+            cameraRoot = UIFactory.Stretch("Camera", screen).gameObject;
+            Color w = new Color(1f, 1f, 1f, 0.8f);
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 a = new Vector2(i % 2, i / 2);
+                RectTransform c = UIFactory.Rect("Corner" + i, cameraRoot.transform, a, a, a, new Vector2(a.x > 0 ? -24f : 24f, a.y > 0 ? -60f : 120f), new Vector2(46f, 46f));
+                UIFactory.AddImage(UIFactory.Rect("H", c, a, a, a, Vector2.zero, new Vector2(46f, 4f)), w);
+                UIFactory.AddImage(UIFactory.Rect("V", c, a, a, a, Vector2.zero, new Vector2(4f, 46f)), w);
+            }
+            reticle = new Image[4];
+            reticle[0] = UIFactory.AddImage(UIFactory.Centered("Ret_L", cameraRoot.transform, -26f, 0f, 22f, 3f), w);
+            reticle[1] = UIFactory.AddImage(UIFactory.Centered("Ret_R", cameraRoot.transform, 26f, 0f, 22f, 3f), w);
+            reticle[2] = UIFactory.AddImage(UIFactory.Centered("Ret_T", cameraRoot.transform, 0f, 26f, 3f, 22f), w);
+            reticle[3] = UIFactory.AddImage(UIFactory.Centered("Ret_B", cameraRoot.transform, 0f, -26f, 3f, 22f), w);
+            RectTransform lb = UIFactory.TopLeft("LabelBG", cameraRoot.transform, 18f, 470f, 368f, 46f);
+            UIFactory.AddImage(lb, new Color(0f, 0f, 0f, 0.55f));
+            camLabel = UIFactory.AddText(UIFactory.Stretch("Label", lb), "", 19, Color.white, TextAnchor.MiddleCenter);
+            RectTransform tb = UIFactory.TopLeft("TopBG", cameraRoot.transform, 0f, 0f, 404f, 40f);
+            UIFactory.AddImage(tb, new Color(0f, 0f, 0f, 0.55f));
+            camFlashText = UIFactory.AddText(UIFactory.TopLeft("Flash", tb, 14f, 6f, 200f, 28f), "", 17, Color.white, TextAnchor.MiddleLeft);
+            camFlashText.fontStyle = FontStyle.Bold;
+            camCount = UIFactory.AddText(UIFactory.TopLeft("Count", tb, 190f, 6f, 200f, 28f), "", 16, Color.white, TextAnchor.MiddleRight);
+            RectTransform fb = UIFactory.TopLeft("FooterBG", cameraRoot.transform, 0f, 672f, 404f, 72f);
+            UIFactory.AddImage(fb, new Color(0f, 0f, 0f, 0.55f));
+            cameraRoot.SetActive(false);
+
+            // --- search: the school's catalogue
+            searchRoot = UIFactory.Stretch("Search", screen).gameObject;
+            searchHeader = UIFactory.AddText(UIFactory.TopLeft("Header", searchRoot.transform, 18f, 10f, 368f, 34f), AppName(AppSearch), 22, Ink, TextAnchor.MiddleLeft);
+            searchHeader.fontStyle = FontStyle.Bold;
+            UIFactory.AddImage(UIFactory.TopLeft("Divider", searchRoot.transform, 18f, 46f, 368f, 2f), new Color(0f, 0f, 0f, 0.25f));
+            UIFactory.AddText(UIFactory.TopLeft("Catalogue", searchRoot.transform, 18f, 54f, 368f, 24f), Loc.L("CLEARVIEW LIBRARY CATALOGUE  -  since 04/1967", "明鉴图书馆目录  -  始于 1967 年 4 月"), 14, new Color(0.45f, 0.3f, 0.2f), TextAnchor.MiddleLeft);
+            RectTransform qbox = UIFactory.TopLeft("Query", searchRoot.transform, 18f, 86f, 368f, 56f);
+            UIFactory.AddImage(qbox, new Color(0f, 0f, 0f, 0.1f));
+            searchQuery = UIFactory.AddText(UIFactory.Stretch("Text", qbox), "", 21, Ink, TextAnchor.MiddleCenter);
+            searchQuery.fontStyle = FontStyle.Bold;
+            searchBarRoot = UIFactory.TopLeft("Bar", searchRoot.transform, 18f, 150f, 368f, 8f).gameObject;
+            UIFactory.AddImage((RectTransform)searchBarRoot.transform, new Color(0f, 0f, 0f, 0.15f));
+            searchFill = UIFactory.Rect("Fill", searchBarRoot.transform, Vector2.zero, new Vector2(0f, 1f), new Vector2(0f, 0.5f), Vector2.zero, Vector2.zero);
+            UIFactory.AddImage(searchFill, new Color(0.85f, 0.45f, 0.15f));
+            searchResultText = UIFactory.AddText(UIFactory.TopLeft("Result", searchRoot.transform, 22f, 172f, 360f, 480f), "", 18, Ink, TextAnchor.UpperLeft);
+            searchRoot.SetActive(false);
+
             footer = UIFactory.AddText(UIFactory.TopLeft("Footer", screen, 18f, 680f, 368f, 50f), "", 16, Ink, TextAnchor.UpperCenter);
 
             dangerTint = UIFactory.AddImage(UIFactory.Stretch("DangerRed", screen), new Color(0.85f, 0.05f, 0.05f, 0f));
+            // a tiny bell in the corner of every screen: the silent switch nobody ever explains
+            RectTransform bellR = UIFactory.TopLeft("Bell", screen, 382f, 3f, 20f, 18f);
+            bellBody = UIFactory.AddImage(UIFactory.TopLeft("Body", bellR, 5f, 1f, 10f, 11f), new Color(0.3f, 0.3f, 0.32f));
+            bellClapper = UIFactory.AddImage(UIFactory.TopLeft("Clapper", bellR, 2f, 12f, 16f, 3f), new Color(0.3f, 0.3f, 0.32f));
+            RectTransform slash = UIFactory.Centered("Slash", bellR, 0f, 0f, 24f, 3f);
+            slash.localRotation = Quaternion.Euler(0f, 0f, 40f);
+            bellSlash = UIFactory.AddImage(slash, new Color(0.75f, 0.2f, 0.15f));
+            bellSlash.enabled = false;
+            bellText = UIFactory.AddText(UIFactory.TopLeft("BellText", screen, 270f, 2f, 108f, 20f), "", 13, new Color(0.75f, 0.2f, 0.15f), TextAnchor.MiddleRight);
+            bellText.fontStyle = FontStyle.Bold;
+            whiteFlash = UIFactory.AddImage(UIFactory.Stretch("ShutterFlash", screen), new Color(1f, 1f, 1f, 0f));
+            whiteFlash.raycastTarget = false;
         }
 
         // Photos are drawn with simple shapes - replace with real images later.
